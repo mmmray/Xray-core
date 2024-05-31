@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
-    stdnet "net"
+    gonet "net"
     "time"
 
 	"github.com/xtls/xray-core/common"
@@ -34,7 +34,7 @@ func maybeWrapTls(ctx context.Context, conn net.Conn, dest net.Destination, stre
 		} else {
 			conn = tls.Client(conn, tlsConfig)
 		}
-	}
+    }
 
     return conn, nil
 }
@@ -56,7 +56,7 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
 
 	var requestURL url.URL
     requestURL.Scheme = "http"
-    requestURL.Host = dest.NetAddr()
+    requestURL.Host = transportConfiguration.Host
     requestURL.Path = transportConfiguration.GetNormalizedPath()
 
     dialContext := func(ctxInner context.Context, network string, addr string) (net.Conn, error) {
@@ -77,7 +77,7 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
         Transport: &httpTransport,
     }
 
-    var remoteAddr stdnet.Addr
+    var remoteAddr gonet.Addr
 
     trace := &httptrace.ClientTrace{
         GotConn: func(connInfo httptrace.GotConnInfo) {
@@ -89,11 +89,12 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
     sessionId := sessionIdUuid.String()
 
     req, err := http.NewRequest("GET", requestURL.String() + sessionId + "/down", nil)
-    // TODO headers bruh
     if err != nil {
         return nil, err
     }
     req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
+
+    req.Header = transportConfiguration.GetRequestHeader()
 
     downResponse, err := httpClient.Do(req)
     if err != nil {
@@ -114,12 +115,14 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
                 break
             }
 
-            resp, err := httpClient.Post(
-                uploadUrl,
-                "application/octet-stream", 
-                &buf.MultiBufferContainer{ MultiBuffer: chunk },
-            )
+            req, err := http.NewRequest("POST", uploadUrl, &buf.MultiBufferContainer{ MultiBuffer: chunk })
+            if err != nil {
+                break
+            }
 
+            req.Header = transportConfiguration.GetRequestHeader()
+
+            resp, err := httpClient.Do(req)
             if err != nil {
                 break
             }
@@ -144,7 +147,7 @@ type splitConn struct {
     downResponse *http.Response
     uploadPipe *buf.BufferedWriter
     uploadClient http.Client
-    remoteAddr stdnet.Addr
+    remoteAddr gonet.Addr
     uploadUrl string
 }
 
@@ -168,12 +171,12 @@ func (c *splitConn) Close() error {
     return c.uploadPipe.Close()
 }
 
-func (c *splitConn) LocalAddr() stdnet.Addr {
+func (c *splitConn) LocalAddr() gonet.Addr {
     // TODO wrong
     return c.remoteAddr
 }
 
-func (c *splitConn) RemoteAddr() stdnet.Addr {
+func (c *splitConn) RemoteAddr() gonet.Addr {
     return c.remoteAddr
 }
 
