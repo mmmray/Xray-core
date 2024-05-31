@@ -45,37 +45,45 @@ func (h *requestHandler) ServeHTTP(writer http.ResponseWriter, request *http.Req
         return
     }
 
-	forwardedAddrs := http_proto.ParseXForwardedFor(request.Header)
-	remoteAddr, err := gonet.ResolveTCPAddr("tcp", request.RemoteAddr)
+    forwardedAddrs := http_proto.ParseXForwardedFor(request.Header)
+    remoteAddr, err := gonet.ResolveTCPAddr("tcp", request.RemoteAddr)
     if err != nil {
         remoteAddr = &gonet.TCPAddr{}
     }
-	if len(forwardedAddrs) > 0 && forwardedAddrs[0].Family().IsIP() {
-		remoteAddr = &net.TCPAddr{
-			IP:   forwardedAddrs[0].IP(),
-			Port: int(0),
-		}
-	}
-
-    uploadPipeReader, uploadPipeWriter := io.Pipe()
-    downloadPipeReader, downloadPipeWriter := io.Pipe()
-
-    h.sessions[sessionId] = uploadPipeWriter
-
-    conn := serverConn {
-        downloadPipe: downloadPipeWriter,
-        uploadPipe: uploadPipeReader,
-        remoteAddr: remoteAddr,
+    if len(forwardedAddrs) > 0 && forwardedAddrs[0].Family().IsIP() {
+        remoteAddr = &net.TCPAddr{
+            IP:   forwardedAddrs[0].IP(),
+            Port: int(0),
+        }
     }
 
-	h.ln.addConn(stat.Connection(&conn))
+    if request.Method == "POST" {
+        uploadPipeWriter := h.sessions[sessionId] 
+        io.Copy(uploadPipeWriter, request.Body)
+		writer.WriteHeader(http.StatusOK)
+    } else if request.Method == "GET" {
+        uploadPipeReader, uploadPipeWriter := io.Pipe()
+        downloadPipeReader, downloadPipeWriter := io.Pipe()
 
-    // "A ResponseWriter may not be used after [Handler.ServeHTTP] has returned."
-    // therefore, let's block this goroutine with copying until it is done
-    io.Copy(writer, downloadPipeReader)
+        h.sessions[sessionId] = uploadPipeWriter
 
-    // the connection is finished, clean up map
-    delete(h.sessions, sessionId)
+        conn := serverConn {
+            downloadPipe: downloadPipeWriter,
+            uploadPipe: uploadPipeReader,
+            remoteAddr: remoteAddr,
+        }
+
+		writer.WriteHeader(http.StatusOK)
+
+        h.ln.addConn(stat.Connection(&conn))
+
+        // "A ResponseWriter may not be used after [Handler.ServeHTTP] has returned."
+        // therefore, let's block this goroutine with copying until it is done
+        io.Copy(writer, downloadPipeReader)
+
+        // the connection is finished, clean up map
+        delete(h.sessions, sessionId)
+    }
 }
 
 type serverConn struct {
