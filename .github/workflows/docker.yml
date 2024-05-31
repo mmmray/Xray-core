@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - splithttp
 
 jobs:
   build-image:
