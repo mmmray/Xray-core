@@ -71,6 +71,7 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
 
     httpTransport := http.Transport{
         DialContext: dialContext,
+        DialTLSContext: dialContext,
     }
 
     httpClient := http.Client{
