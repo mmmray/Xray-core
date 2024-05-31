@@ -42,20 +42,14 @@ func maybeWrapTls(ctx context.Context, conn net.Conn, dest net.Destination, stre
 func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.MemoryStreamConfig) (stat.Connection, error) {
 	newError("dialing splithttp to ", dest).WriteToLog(session.ExportIDToError(ctx))
 
-	downConn, err := internet.DialSystem(ctx, dest, streamSettings.SocketSettings)
-	if err != nil {
-		return nil, err
-	}
-
-    downConn, err = maybeWrapTls(ctx, downConn, dest, streamSettings)
-	if err != nil {
-		return nil, err
-	}
-
     transportConfiguration := streamSettings.ProtocolSettings.(*Config)
 
 	var requestURL url.URL
-    requestURL.Scheme = "http"
+	if config := tls.ConfigFromStreamSettings(streamSettings); config != nil {
+        requestURL.Scheme = "https"
+    } else {
+        requestURL.Scheme = "http"
+    }
     requestURL.Host = transportConfiguration.Host
     requestURL.Path = transportConfiguration.GetNormalizedPath()
 
