@@ -80,6 +80,7 @@ func (h *requestHandler) ServeHTTP(writer http.ResponseWriter, request *http.Req
             remoteAddr: remoteAddr,
         }
 
+        writer.Header().Set("X-Accel-Buffering", "no")
 		writer.WriteHeader(http.StatusOK)
         responseFlusher.Flush()
 
