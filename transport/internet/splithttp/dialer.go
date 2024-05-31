@@ -141,7 +141,6 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
 type splitConn struct {
     downResponse *http.Response
     uploadPipe *buf.BufferedWriter
-    uploadClient http.Client
     remoteAddr gonet.Addr
     uploadUrl string
 }
