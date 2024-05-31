@@ -51,6 +51,9 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
         requestURL.Scheme = "http"
     }
     requestURL.Host = transportConfiguration.Host
+    if requestURL.Host == "" {
+        requestURL.Host = dest.NetAddr()
+    }
     requestURL.Path = transportConfiguration.GetNormalizedPath()
 
     dialContext := func(ctxInner context.Context, network string, addr string) (net.Conn, error) {
@@ -83,7 +86,7 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
     sessionIdUuid := uuid.New()
     sessionId := sessionIdUuid.String()
 
-    req, err := http.NewRequest("GET", requestURL.String() + sessionId + "/down", nil)
+    req, err := http.NewRequest("GET", requestURL.String() + "?session=" + sessionId, nil)
     if err != nil {
         return nil, err
     }
@@ -96,7 +99,7 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
         return nil, err
     }
 
-    uploadUrl := requestURL.String() + sessionId + "/up"
+    uploadUrl := requestURL.String() + "?session=" + sessionId
 
     uploadPipeReader, uploadPipeWriter := pipe.New(pipe.WithSizeLimit(128000))
 

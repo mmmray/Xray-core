@@ -38,7 +38,7 @@ func (h *requestHandler) ServeHTTP(writer http.ResponseWriter, request *http.Req
 	}
 
     queryString := request.URL.Query()
-    sessionId := queryString.Get("sessionId")
+    sessionId := queryString.Get("session")
     if sessionId == "" {
 		newError("no sessionid on request:", request.URL.Path).WriteToLog()
 		writer.WriteHeader(http.StatusNotFound)
@@ -59,9 +59,16 @@ func (h *requestHandler) ServeHTTP(writer http.ResponseWriter, request *http.Req
 
     if request.Method == "POST" {
         uploadPipeWriter := h.sessions[sessionId] 
-        io.Copy(uploadPipeWriter, request.Body)
+        if uploadPipeWriter != nil {
+            io.Copy(uploadPipeWriter, request.Body)
+        }
 		writer.WriteHeader(http.StatusOK)
     } else if request.Method == "GET" {
+        responseFlusher, ok := writer.(http.Flusher)
+        if !ok {
+            panic("expected http.ResponseWriter to be an http.Flusher")
+        }
+
         uploadPipeReader, uploadPipeWriter := io.Pipe()
         downloadPipeReader, downloadPipeWriter := io.Pipe()
 
@@ -74,15 +81,32 @@ func (h *requestHandler) ServeHTTP(writer http.ResponseWriter, request *http.Req
         }
 
 		writer.WriteHeader(http.StatusOK)
+        responseFlusher.Flush()
 
         h.ln.addConn(stat.Connection(&conn))
 
         // "A ResponseWriter may not be used after [Handler.ServeHTTP] has returned."
         // therefore, let's block this goroutine with copying until it is done
-        io.Copy(writer, downloadPipeReader)
+        for {
+            buf := make([]byte, 128000)
+            n, err := downloadPipeReader.Read(buf)
+            if err != nil {
+                break
+            }
+
+            _, err = writer.Write(buf[:n])
+            if err != nil {
+                break
+            }
+
+            responseFlusher.Flush()
+
+        }
 
         // the connection is finished, clean up map
         delete(h.sessions, sessionId)
+    } else {
+        writer.WriteHeader(http.StatusMethodNotAllowed)
     }
 }
 
@@ -186,6 +210,7 @@ func ListenSH(ctx context.Context, address net.Address, port net.Port, streamSet
 			host: wsSettings.Host,
 			path: wsSettings.GetNormalizedPath(),
 			ln:   l,
+            sessions: make(map[string]*io.PipeWriter),
 		},
 		ReadHeaderTimeout: time.Second * 4,
 		MaxHeaderBytes:    8192,
