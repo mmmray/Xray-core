@@ -133,8 +133,8 @@ func ListenSH(ctx context.Context, address net.Address, port net.Port, streamSet
 	l := &Listener{
 		addConn: addConn,
 	}
-	wsSettings := streamSettings.ProtocolSettings.(*Config)
-	l.config = wsSettings
+	shSettings := streamSettings.ProtocolSettings.(*Config)
+	l.config = shSettings
 	if l.config != nil {
 		if streamSettings.SocketSettings == nil {
 			streamSettings.SocketSettings = &internet.SocketConfig{}
@@ -172,8 +172,8 @@ func ListenSH(ctx context.Context, address net.Address, port net.Port, streamSet
 
 	l.server = http.Server{
 		Handler: &requestHandler{
-			host: wsSettings.Host,
-			path: wsSettings.GetNormalizedPath(),
+			host: shSettings.Host,
+			path: shSettings.GetNormalizedPath(),
 			ln:   l,
             sessions: make(map[string]*io.PipeWriter),
 		},
