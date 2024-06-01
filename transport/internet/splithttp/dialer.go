@@ -6,6 +6,7 @@ import (
 	"net/http/httptrace"
 	"net/url"
     gonet "net"
+    gotls "crypto/tls"
 
 	"github.com/xtls/xray-core/common"
 	"github.com/xtls/xray-core/common/buf"
@@ -16,36 +17,30 @@ import (
 	"github.com/xtls/xray-core/transport/internet/stat"
 	"github.com/xtls/xray-core/transport/internet/tls"
 	"github.com/xtls/xray-core/transport/pipe"
+	"golang.org/x/net/http2"
 )
 
 func init() {
     common.Must(internet.RegisterTransportDialer(protocolName, Dial))
 }
 
-func maybeWrapTls(ctx context.Context, conn net.Conn, dest net.Destination, config *tls.Config) (net.Conn, error) {
-	if config != nil {
-		tlsConfig := config.GetTLSConfig(tls.WithDestination(dest))
-		if fingerprint := tls.GetFingerprint(config.Fingerprint); fingerprint != nil {
-			conn = tls.UClient(conn, tlsConfig, fingerprint)
-			if err := conn.(*tls.UConn).HandshakeContext(ctx); err != nil {
-				return nil, err
-			}
-		} else {
-			conn = tls.Client(conn, tlsConfig)
-		}
-    }
-
-    return conn, nil
+type utlsRoundtripper struct {
+    dialTLSContext func(ctx context.Context)
+    h2Transport http2.Transport
+    h1Transport http.Transport
 }
 
 func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.MemoryStreamConfig) (stat.Connection, error) {
 	newError("dialing splithttp to ", dest).WriteToLog(session.ExportIDToError(ctx))
 
+	var requestURL url.URL
+    var gotlsConfig *gotls.Config
+
     transportConfiguration := streamSettings.ProtocolSettings.(*Config)
     tlsConfig := tls.ConfigFromStreamSettings(streamSettings)
 
-	var requestURL url.URL
 	if tlsConfig != nil {
+        gotlsConfig = tlsConfig.GetTLSConfig(tls.WithDestination(dest))
         requestURL.Scheme = "https"
     } else {
         requestURL.Scheme = "http"
@@ -56,23 +51,46 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
     }
     requestURL.Path = transportConfiguration.GetNormalizedPath()
 
-    dialContext := func(ctxInner context.Context, network string, addr string) (net.Conn, error) {
-        // XXX: ignoring network and addr param
+    dialContext := func(ctxInner context.Context) (net.Conn, error) {
         conn, err := internet.DialSystem(ctx, dest, streamSettings.SocketSettings)
         if err != nil {
             return nil, err
         }
 
-        return maybeWrapTls(ctx, conn, dest, tlsConfig)
+        if gotlsConfig != nil {
+            if fingerprint := tls.GetFingerprint(tlsConfig.Fingerprint); fingerprint != nil {
+                conn = tls.UClient(conn, gotlsConfig, fingerprint)
+                if err := conn.(*tls.UConn).HandshakeContext(ctx); err != nil {
+                    return nil, err
+                }
+            } else {
+                conn = tls.Client(conn, gotlsConfig)
+            }
+        }
+
+        return conn, nil
     }
 
-    httpTransport := http.Transport{
-        DialContext: dialContext,
-        DialTLSContext: dialContext,
+    var httpTransport http.RoundTripper
+
+    if tlsConfig != nil {
+        httpTransport = &http2.Transport {
+            DialTLSContext: func(ctxInner context.Context, network string, addr string, cfg *gotls.Config) (net.Conn, error) {
+                return dialContext(ctxInner)
+            },
+        }
+    } else {
+        httpDialContext := func(ctxInner context.Context, network string, addr string) (net.Conn, error) {
+            return dialContext(ctxInner)
+        }
+        httpTransport = &http.Transport {
+            DialTLSContext: httpDialContext,
+            DialContext: httpDialContext,
+        }
     }
 
     httpClient := http.Client{
-        Transport: &httpTransport,
+        Transport: httpTransport,
     }
 
     var remoteAddr gonet.Addr
