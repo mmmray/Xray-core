@@ -23,6 +23,7 @@ type requestHandler struct {
 	path string
 	ln   *Listener
     sessions map[string]*io.PipeWriter
+    localAddr gonet.TCPAddr
 }
 
 func (h *requestHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
@@ -142,6 +143,8 @@ func ListenSH(ctx context.Context, address net.Address, port net.Port, streamSet
 	}
 	var listener net.Listener
 	var err error
+    var localAddr = gonet.TCPAddr{}
+
 	if port == net.Port(0) { // unix
 		listener, err = internet.ListenSystem(ctx, &net.UnixAddr{
 			Name: address.Domain(),
@@ -152,6 +155,10 @@ func ListenSH(ctx context.Context, address net.Address, port net.Port, streamSet
 		}
 		newError("listening unix domain socket(for SH) on ", address).WriteToLog(session.ExportIDToError(ctx))
 	} else { // tcp
+        localAddr = gonet.TCPAddr {
+            IP: address.IP(),
+            Port: int(port),
+        }
 		listener, err = internet.ListenSystem(ctx, &net.TCPAddr{
 			IP:   address.IP(),
 			Port: int(port),
@@ -176,6 +183,7 @@ func ListenSH(ctx context.Context, address net.Address, port net.Port, streamSet
 			path: shSettings.GetNormalizedPath(),
 			ln:   l,
             sessions: make(map[string]*io.PipeWriter),
+            localAddr: localAddr,
 		},
 		ReadHeaderTimeout: time.Second * 4,
 		MaxHeaderBytes:    8192,
