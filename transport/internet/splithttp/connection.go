@@ -10,6 +10,7 @@ type splitConn struct {
     downloadPipe io.WriteCloser
     uploadPipe io.ReadCloser
     remoteAddr net.Addr
+    localAddr net.Addr
 }
 
 func (c *splitConn) Write(b []byte) (int, error) {
@@ -28,8 +29,7 @@ func (c *splitConn) Close() error {
 }
 
 func (c *splitConn) LocalAddr() net.Addr {
-    // TODO wrong
-    return c.remoteAddr
+    return c.localAddr
 }
 
 func (c *splitConn) RemoteAddr() net.Addr {

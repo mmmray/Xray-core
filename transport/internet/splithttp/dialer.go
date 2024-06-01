@@ -76,21 +76,27 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
     }
 
     var remoteAddr gonet.Addr
+    var localAddr gonet.Addr
 
     trace := &httptrace.ClientTrace{
         GotConn: func(connInfo httptrace.GotConnInfo) {
             remoteAddr = connInfo.Conn.RemoteAddr()
+            localAddr = connInfo.Conn.LocalAddr()
         },
     }
 
     sessionIdUuid := uuid.New()
     sessionId := sessionIdUuid.String()
 
-    req, err := http.NewRequest("GET", requestURL.String() + "?session=" + sessionId, nil)
+    req, err := http.NewRequestWithContext(
+        httptrace.WithClientTrace(ctx, trace),
+        "GET",
+        requestURL.String() + "?session=" + sessionId,
+        nil,
+    )
     if err != nil {
         return nil, err
     }
-    req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
 
     req.Header = transportConfiguration.GetRequestHeader()
 
@@ -141,6 +147,7 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
         },
         uploadPipe: downResponse.Body,
         remoteAddr: remoteAddr,
+        localAddr: localAddr,
     }
 
 	return stat.Connection(&conn), nil
