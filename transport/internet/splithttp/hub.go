@@ -70,90 +70,54 @@ func (h *requestHandler) ServeHTTP(writer http.ResponseWriter, request *http.Req
         }
 
         uploadPipeReader, uploadPipeWriter := io.Pipe()
-        downloadPipeReader, downloadPipeWriter := io.Pipe()
 
         h.sessions[sessionId] = uploadPipeWriter
+        // the connection is finished, clean up map
+        defer delete(h.sessions, sessionId)
 
-        conn := serverConn {
-            downloadPipe: downloadPipeWriter,
-            uploadPipe: uploadPipeReader,
-            remoteAddr: remoteAddr,
-        }
-
+        // magic header instructs nginx + apache to not buffer response body
         writer.Header().Set("X-Accel-Buffering", "no")
 		writer.WriteHeader(http.StatusOK)
         responseFlusher.Flush()
 
+        downloadDone := make(chan int)
+
+        conn := splitConn {
+            downloadPipe: &httpResponseBodyWriter {
+                responseWriter: writer,
+                downloadDone: downloadDone,
+                responseFlusher: responseFlusher,
+            },
+            uploadPipe: uploadPipeReader,
+            remoteAddr: remoteAddr,
+        }
+
         h.ln.addConn(stat.Connection(&conn))
 
         // "A ResponseWriter may not be used after [Handler.ServeHTTP] has returned."
-        // therefore, let's block this goroutine with copying until it is done
-        for {
-            buf := make([]byte, 128000)
-            n, err := downloadPipeReader.Read(buf)
-            if err != nil {
-                break
-            }
+        <-downloadDone
 
-            _, err = writer.Write(buf[:n])
-            if err != nil {
-                break
-            }
-
-            responseFlusher.Flush()
-
-        }
-
-        // the connection is finished, clean up map
-        delete(h.sessions, sessionId)
     } else {
         writer.WriteHeader(http.StatusMethodNotAllowed)
     }
 }
 
-type serverConn struct {
-    downloadPipe *io.PipeWriter
-    uploadPipe *io.PipeReader
-    remoteAddr gonet.Addr
+type httpResponseBodyWriter struct {
+    responseWriter http.ResponseWriter
+    responseFlusher http.Flusher
+    downloadDone chan int
 }
 
-func (c *serverConn) Write(b []byte) (int, error) {
-    return c.downloadPipe.Write(b)
-}
-
-func (c *serverConn) Read(b []byte) (int, error) {
-    return c.uploadPipe.Read(b)
-}
-
-func (c *serverConn) Close() error {
-    err := c.downloadPipe.Close()
-    if err != nil {
-        return err
+func (c *httpResponseBodyWriter) Write(b []byte) (int, error) {
+    n, err := c.responseWriter.Write(b)
+    if err == nil {
+        c.responseFlusher.Flush()
     }
-    return c.uploadPipe.Close()
+    return n, err
 }
 
-func (c *serverConn) LocalAddr() gonet.Addr {
-    // TODO wrong
-    return c.remoteAddr
-}
-
-func (c *serverConn) RemoteAddr() gonet.Addr {
-    return c.remoteAddr
-}
-
-func (c *serverConn) SetDeadline(t time.Time) error {
-    // TODO cannot do anything useful
-    return nil
-}
-
-func (c *serverConn) SetReadDeadline(t time.Time) error {
-    // TODO cannot do anything useful
-    return nil
-}
-
-func (c *serverConn) SetWriteDeadline(t time.Time) error {
-    // TODO cannot do anything useful
+func (c *httpResponseBodyWriter) Close() error {
+    c.downloadDone <- 0
     return nil
 }
 

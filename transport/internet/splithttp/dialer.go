@@ -6,7 +6,6 @@ import (
 	"net/http/httptrace"
 	"net/url"
     gonet "net"
-    "time"
 
 	"github.com/xtls/xray-core/common"
 	"github.com/xtls/xray-core/common/buf"
@@ -132,27 +131,21 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
     }()
 
     conn := splitConn {
-        downResponse: downResponse,
-        uploadPipe: buf.NewBufferedWriter(uploadPipeWriter),
+        downloadPipe: &uploadWriter {
+            uploadPipe: buf.NewBufferedWriter(uploadPipeWriter),
+        },
+        uploadPipe: downResponse.Body,
         remoteAddr: remoteAddr,
-        uploadUrl: uploadUrl,
     }
 
 	return stat.Connection(&conn), nil
 }
 
-type splitConn struct {
-    downResponse *http.Response
+type uploadWriter struct {
     uploadPipe *buf.BufferedWriter
-    remoteAddr gonet.Addr
-    uploadUrl string
 }
 
-func (c *splitConn) Read(b []byte) (int, error) {
-    return c.downResponse.Body.Read(b)
-}
-
-func (c *splitConn) Write(b []byte) (int, error) {
+func (c *uploadWriter) Write(b []byte) (int, error) {
     bytes, err := c.uploadPipe.Write(b)
     if err == nil {
         c.uploadPipe.Flush()
@@ -160,34 +153,6 @@ func (c *splitConn) Write(b []byte) (int, error) {
     return bytes, err
 }
 
-func (c *splitConn) Close() error {
-    err := c.downResponse.Body.Close()
-    if err != nil {
-        return err
-    }
+func (c *uploadWriter) Close() error {
     return c.uploadPipe.Close()
-}
-
-func (c *splitConn) LocalAddr() gonet.Addr {
-    // TODO wrong
-    return c.remoteAddr
-}
-
-func (c *splitConn) RemoteAddr() gonet.Addr {
-    return c.remoteAddr
-}
-
-func (c *splitConn) SetDeadline(t time.Time) error {
-    // TODO cannot do anything useful
-    return nil
-}
-
-func (c *splitConn) SetReadDeadline(t time.Time) error {
-    // TODO cannot do anything useful
-    return nil
-}
-
-func (c *splitConn) SetWriteDeadline(t time.Time) error {
-    // TODO cannot do anything useful
-    return nil
 }
