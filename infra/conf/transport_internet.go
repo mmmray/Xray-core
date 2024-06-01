@@ -23,6 +23,7 @@ import (
 	"github.com/xtls/xray-core/transport/internet/kcp"
 	"github.com/xtls/xray-core/transport/internet/quic"
 	"github.com/xtls/xray-core/transport/internet/reality"
+	"github.com/xtls/xray-core/transport/internet/splithttp"
 	"github.com/xtls/xray-core/transport/internet/tcp"
 	"github.com/xtls/xray-core/transport/internet/tls"
 	"github.com/xtls/xray-core/transport/internet/websocket"
@@ -223,9 +224,9 @@ func (c *HttpUpgradeConfig) Build() (proto.Message, error) {
 }
 
 type SplitHTTPConfig struct {
-	Host                string            `json:"host"`
-	Path                string            `json:"path"`
-	Headers             map[string]string `json:"headers"`
+	Host    string            `json:"host"`
+	Path    string            `json:"path"`
+	Headers map[string]string `json:"headers"`
 }
 
 // Build implements Buildable.
@@ -239,9 +240,9 @@ func (c *SplitHTTPConfig) Build() (proto.Message, error) {
 		c.Host = c.Headers["Host"]
 	}
 	config := &splithttp.Config{
-		Path:                c.Path,
-		Host:                c.Host,
-		Header:              c.Headers,
+		Path:   c.Path,
+		Host:   c.Host,
+		Header: c.Headers,
 	}
 	return config, nil
 }
@@ -918,7 +919,7 @@ func (c *StreamConfig) Build() (*internet.StreamConfig, error) {
 			Settings:     serial.ToTypedMessage(hs),
 		})
 	}
-	if c.SplitHTTPSettings!= nil {
+	if c.SplitHTTPSettings != nil {
 		hs, err := c.SplitHTTPSettings.Build()
 		if err != nil {
 			return nil, newError("Failed to build SplitHTTP config.").Base(err)

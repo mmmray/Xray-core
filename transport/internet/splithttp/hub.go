@@ -3,11 +3,11 @@ package splithttp
 import (
 	"context"
 	"crypto/tls"
+	"io"
+	gonet "net"
 	"net/http"
-    gonet "net"
 	"sync"
 	"time"
-    "io"
 
 	"github.com/xtls/xray-core/common"
 	"github.com/xtls/xray-core/common/net"
@@ -19,11 +19,11 @@ import (
 )
 
 type requestHandler struct {
-	host string
-	path string
-	ln   *Listener
-    sessions map[string]*io.PipeWriter
-    localAddr gonet.TCPAddr
+	host      string
+	path      string
+	ln        *Listener
+	sessions  map[string]*io.PipeWriter
+	localAddr gonet.TCPAddr
 }
 
 func (h *requestHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
@@ -38,88 +38,88 @@ func (h *requestHandler) ServeHTTP(writer http.ResponseWriter, request *http.Req
 		return
 	}
 
-    queryString := request.URL.Query()
-    sessionId := queryString.Get("session")
-    if sessionId == "" {
+	queryString := request.URL.Query()
+	sessionId := queryString.Get("session")
+	if sessionId == "" {
 		newError("no sessionid on request:", request.URL.Path).WriteToLog()
 		writer.WriteHeader(http.StatusNotFound)
-        return
-    }
+		return
+	}
 
-    forwardedAddrs := http_proto.ParseXForwardedFor(request.Header)
-    remoteAddr, err := gonet.ResolveTCPAddr("tcp", request.RemoteAddr)
-    if err != nil {
-        remoteAddr = &gonet.TCPAddr{}
-    }
-    if len(forwardedAddrs) > 0 && forwardedAddrs[0].Family().IsIP() {
-        remoteAddr = &net.TCPAddr{
-            IP:   forwardedAddrs[0].IP(),
-            Port: int(0),
-        }
-    }
+	forwardedAddrs := http_proto.ParseXForwardedFor(request.Header)
+	remoteAddr, err := gonet.ResolveTCPAddr("tcp", request.RemoteAddr)
+	if err != nil {
+		remoteAddr = &gonet.TCPAddr{}
+	}
+	if len(forwardedAddrs) > 0 && forwardedAddrs[0].Family().IsIP() {
+		remoteAddr = &net.TCPAddr{
+			IP:   forwardedAddrs[0].IP(),
+			Port: int(0),
+		}
+	}
 
-    if request.Method == "POST" {
-        uploadPipeWriter := h.sessions[sessionId] 
-        if uploadPipeWriter != nil {
-            io.Copy(uploadPipeWriter, request.Body)
-        }
+	if request.Method == "POST" {
+		uploadPipeWriter := h.sessions[sessionId]
+		if uploadPipeWriter != nil {
+			io.Copy(uploadPipeWriter, request.Body)
+		}
 		writer.WriteHeader(http.StatusOK)
-    } else if request.Method == "GET" {
-        responseFlusher, ok := writer.(http.Flusher)
-        if !ok {
-            panic("expected http.ResponseWriter to be an http.Flusher")
-        }
+	} else if request.Method == "GET" {
+		responseFlusher, ok := writer.(http.Flusher)
+		if !ok {
+			panic("expected http.ResponseWriter to be an http.Flusher")
+		}
 
-        uploadPipeReader, uploadPipeWriter := io.Pipe()
+		uploadPipeReader, uploadPipeWriter := io.Pipe()
 
-        h.sessions[sessionId] = uploadPipeWriter
-        // the connection is finished, clean up map
-        defer delete(h.sessions, sessionId)
+		h.sessions[sessionId] = uploadPipeWriter
+		// the connection is finished, clean up map
+		defer delete(h.sessions, sessionId)
 
-        // magic header instructs nginx + apache to not buffer response body
-        writer.Header().Set("X-Accel-Buffering", "no")
+		// magic header instructs nginx + apache to not buffer response body
+		writer.Header().Set("X-Accel-Buffering", "no")
 		writer.WriteHeader(http.StatusOK)
-        responseFlusher.Flush()
+		responseFlusher.Flush()
 
-        downloadDone := make(chan int)
+		downloadDone := make(chan int)
 
-        conn := splitConn {
-            downloadPipe: &httpResponseBodyWriter {
-                responseWriter: writer,
-                downloadDone: downloadDone,
-                responseFlusher: responseFlusher,
-            },
-            uploadPipe: uploadPipeReader,
-            remoteAddr: remoteAddr,
-        }
+		conn := splitConn{
+			downloadPipe: &httpResponseBodyWriter{
+				responseWriter:  writer,
+				downloadDone:    downloadDone,
+				responseFlusher: responseFlusher,
+			},
+			uploadPipe: uploadPipeReader,
+			remoteAddr: remoteAddr,
+		}
 
-        h.ln.addConn(stat.Connection(&conn))
+		h.ln.addConn(stat.Connection(&conn))
 
-        // "A ResponseWriter may not be used after [Handler.ServeHTTP] has returned."
-        <-downloadDone
+		// "A ResponseWriter may not be used after [Handler.ServeHTTP] has returned."
+		<-downloadDone
 
-    } else {
-        writer.WriteHeader(http.StatusMethodNotAllowed)
-    }
+	} else {
+		writer.WriteHeader(http.StatusMethodNotAllowed)
+	}
 }
 
 type httpResponseBodyWriter struct {
-    responseWriter http.ResponseWriter
-    responseFlusher http.Flusher
-    downloadDone chan int
+	responseWriter  http.ResponseWriter
+	responseFlusher http.Flusher
+	downloadDone    chan int
 }
 
 func (c *httpResponseBodyWriter) Write(b []byte) (int, error) {
-    n, err := c.responseWriter.Write(b)
-    if err == nil {
-        c.responseFlusher.Flush()
-    }
-    return n, err
+	n, err := c.responseWriter.Write(b)
+	if err == nil {
+		c.responseFlusher.Flush()
+	}
+	return n, err
 }
 
 func (c *httpResponseBodyWriter) Close() error {
-    c.downloadDone <- 0
-    return nil
+	c.downloadDone <- 0
+	return nil
 }
 
 type Listener struct {
@@ -143,7 +143,7 @@ func ListenSH(ctx context.Context, address net.Address, port net.Port, streamSet
 	}
 	var listener net.Listener
 	var err error
-    var localAddr = gonet.TCPAddr{}
+	var localAddr = gonet.TCPAddr{}
 
 	if port == net.Port(0) { // unix
 		listener, err = internet.ListenSystem(ctx, &net.UnixAddr{
@@ -155,10 +155,10 @@ func ListenSH(ctx context.Context, address net.Address, port net.Port, streamSet
 		}
 		newError("listening unix domain socket(for SH) on ", address).WriteToLog(session.ExportIDToError(ctx))
 	} else { // tcp
-        localAddr = gonet.TCPAddr {
-            IP: address.IP(),
-            Port: int(port),
-        }
+		localAddr = gonet.TCPAddr{
+			IP:   address.IP(),
+			Port: int(port),
+		}
 		listener, err = internet.ListenSystem(ctx, &net.TCPAddr{
 			IP:   address.IP(),
 			Port: int(port),
@@ -179,11 +179,11 @@ func ListenSH(ctx context.Context, address net.Address, port net.Port, streamSet
 
 	l.server = http.Server{
 		Handler: &requestHandler{
-			host: shSettings.Host,
-			path: shSettings.GetNormalizedPath(),
-			ln:   l,
-            sessions: make(map[string]*io.PipeWriter),
-            localAddr: localAddr,
+			host:      shSettings.Host,
+			path:      shSettings.GetNormalizedPath(),
+			ln:        l,
+			sessions:  make(map[string]*io.PipeWriter),
+			localAddr: localAddr,
 		},
 		ReadHeaderTimeout: time.Second * 4,
 		MaxHeaderBytes:    8192,

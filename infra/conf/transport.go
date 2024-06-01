@@ -123,7 +123,7 @@ func (c *TransportConfig) Build() (*global.Config, error) {
 			ProtocolName: "splithttp",
 			Settings:     serial.ToTypedMessage(shs),
 		})
-    }
+	}
 
 	return config, nil
 }

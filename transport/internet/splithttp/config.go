@@ -15,9 +15,9 @@ func (c *Config) GetNormalizedPath() string {
 	if path[0] != '/' {
 		path = "/" + path
 	}
-    if path[len(path)-1] != '/' {
-        path = path + "/";
-    }
+	if path[len(path)-1] != '/' {
+		path = path + "/"
+	}
 	return path
 }
 
@@ -30,7 +30,7 @@ func (c *Config) GetRequestHeader() http.Header {
 }
 
 func init() {
-    common.Must(internet.RegisterProtocolConfigCreator(protocolName, func() interface{} {
-        return new(Config)
-    }))
+	common.Must(internet.RegisterProtocolConfigCreator(protocolName, func() interface{} {
+		return new(Config)
+	}))
 }
