@@ -137,7 +137,7 @@ func (h *requestHandler) ServeHTTP(writer http.ResponseWriter, request *http.Req
 		h.ln.addConn(stat.Connection(&conn))
 
 		// "A ResponseWriter may not be used after [Handler.ServeHTTP] has returned."
-		downloadDone.Wait()
+		<-downloadDone.Wait()
 
 	} else {
 		writer.WriteHeader(http.StatusMethodNotAllowed)
