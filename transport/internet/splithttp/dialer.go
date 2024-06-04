@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/xtls/xray-core/common"
 	"github.com/xtls/xray-core/common/buf"
@@ -81,14 +82,17 @@ func getHTTPClient(ctx context.Context, dest net.Destination, streamSettings *in
 			DialTLSContext: func(ctxInner context.Context, network string, addr string, cfg *gotls.Config) (net.Conn, error) {
 				return dialContext(ctxInner)
 			},
+			IdleConnTimeout: 90 * time.Second,
 		}
 	} else {
 		httpDialContext := func(ctxInner context.Context, network string, addr string) (net.Conn, error) {
 			return dialContext(ctxInner)
 		}
 		httpTransport = &http.Transport{
-			DialTLSContext: httpDialContext,
-			DialContext:    httpDialContext,
+			DialTLSContext:  httpDialContext,
+			DialContext:     httpDialContext,
+			IdleConnTimeout: 90 * time.Second,
+			MaxIdleConns:    100,
 		}
 	}
 
@@ -155,7 +159,7 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
 
 	downResponse, err := httpClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, newError("failed to send download http request").Base(err)
 	}
 
 	if downResponse.StatusCode != 200 {
@@ -200,10 +204,13 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
 					return
 				}
 
+				defer resp.Body.Close()
+
 				if resp.StatusCode != 200 {
 					newError("failed to send upload, bad status code:", resp.Status).WriteToLog()
 					return
 				}
+
 			}()
 
 		}
