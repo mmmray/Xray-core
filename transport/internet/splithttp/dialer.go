@@ -22,7 +22,7 @@ import (
 	"github.com/xtls/xray-core/transport/internet/stat"
 	"github.com/xtls/xray-core/transport/internet/tls"
 	"github.com/xtls/xray-core/transport/pipe"
-	"github.com/xtls/xray-core/transport/internet/transportcommon"
+	"golang.org/x/net/http2"
 )
 
 type dialerConf struct {
@@ -67,7 +67,7 @@ func getHTTPClient(ctx context.Context, dest net.Destination, streamSettings *in
 		gotlsConfig = tlsConfig.GetTLSConfig(tls.WithDestination(dest))
 	}
 
-	dialContext := func(_ context.Context) (gonet.Conn, error) {
+	dialContext := func(ctxInner context.Context) (net.Conn, error) {
 		conn, err := internet.DialSystem(ctx, dest, streamSettings.SocketSettings)
 		if err != nil {
 			return nil, err
@@ -87,19 +87,28 @@ func getHTTPClient(ctx context.Context, dest net.Destination, streamSettings *in
 		return conn, nil
 	}
 
-	httpDialContext := func(ctxInner context.Context, network string, addr string) (gonet.Conn, error) {
-		return dialContext(ctxInner)
-	}
-	httpTransport := &http.Transport{
-		DialTLSContext:  httpDialContext,
-		DialContext:     httpDialContext,
-		IdleConnTimeout: 90 * time.Second,
+	var httpTransport http.RoundTripper
+
+	if tlsConfig != nil {
+		httpTransport = &http2.Transport{
+			DialTLSContext: func(ctxInner context.Context, network string, addr string, cfg *gotls.Config) (net.Conn, error) {
+				return dialContext(ctxInner)
+			},
+			IdleConnTimeout: 90 * time.Second,
+		}
+	} else {
+		httpDialContext := func(ctxInner context.Context, network string, addr string) (net.Conn, error) {
+			return dialContext(ctxInner)
+		}
+		httpTransport = &http.Transport{
+			DialTLSContext:  httpDialContext,
+			DialContext:     httpDialContext,
+			IdleConnTimeout: 90 * time.Second,
+		}
 	}
 
 	client := &http.Client{
-		Transport: transportcommon.NewALPNAwareHTTPRoundTripper(ctx, func(ctxInner context.Context, addr string) (gonet.Conn, error) {
-			return dialContext(ctxInner)
-		}, httpTransport),
+		Transport: httpTransport,
 	}
 
 	globalDialerMap[dialerConf{dest, streamSettings}] = client

@@ -30,13 +30,6 @@ type Conn struct {
 
 const tlsCloseTimeout = 250 * time.Millisecond
 
-func (c *Conn) GetConnectionApplicationProtocol() (string, error) {
-	if err := c.Handshake(); err != nil {
-		return "", err
-	}
-	return c.ConnectionState().NegotiatedProtocol, nil
-}
-
 func (c *Conn) Close() error {
 	timer := time.AfterFunc(tlsCloseTimeout, func() {
 		c.Conn.NetConn().Close()
@@ -85,13 +78,6 @@ type UConn struct {
 }
 
 var _ Interface = (*UConn)(nil)
-
-func (c *UConn) GetConnectionApplicationProtocol() (string, error) {
-	if err := c.Handshake(); err != nil {
-		return "", err
-	}
-	return c.ConnectionState().NegotiatedProtocol, nil
-}
 
 func (c *UConn) Close() error {
 	timer := time.AfterFunc(tlsCloseTimeout, func() {
