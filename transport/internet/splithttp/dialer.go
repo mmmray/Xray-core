@@ -30,8 +30,17 @@ type dialerConf struct {
 	*internet.MemoryStreamConfig
 }
 
+type reusedClient struct {
+	download *http.Client
+	upload   *http.Client
+	isH2     bool
+	// pool of net.Conn, created using dialUploadConn
+	uploadRawPool  *sync.Pool
+	dialUploadConn func(ctxInner context.Context) (net.Conn, error)
+}
+
 var (
-	globalDialerMap    map[dialerConf]*http.Client
+	globalDialerMap    map[dialerConf]reusedClient
 	globalDialerAccess sync.Mutex
 )
 
@@ -40,19 +49,19 @@ func destroyHTTPClient(ctx context.Context, dest net.Destination, streamSettings
 	defer globalDialerAccess.Unlock()
 
 	if globalDialerMap == nil {
-		globalDialerMap = make(map[dialerConf]*http.Client)
+		globalDialerMap = make(map[dialerConf]reusedClient)
 	}
 
 	delete(globalDialerMap, dialerConf{dest, streamSettings})
 
 }
 
-func getHTTPClient(ctx context.Context, dest net.Destination, streamSettings *internet.MemoryStreamConfig) *http.Client {
+func getHTTPClient(ctx context.Context, dest net.Destination, streamSettings *internet.MemoryStreamConfig) reusedClient {
 	globalDialerAccess.Lock()
 	defer globalDialerAccess.Unlock()
 
 	if globalDialerMap == nil {
-		globalDialerMap = make(map[dialerConf]*http.Client)
+		globalDialerMap = make(map[dialerConf]reusedClient)
 	}
 
 	if client, found := globalDialerMap[dialerConf{dest, streamSettings}]; found {
@@ -87,28 +96,45 @@ func getHTTPClient(ctx context.Context, dest net.Destination, streamSettings *in
 		return conn, nil
 	}
 
-	var httpTransport http.RoundTripper
+	var uploadTransport http.RoundTripper
+	var downloadTransport http.RoundTripper
 
 	if tlsConfig != nil {
-		httpTransport = &http2.Transport{
+		downloadTransport = &http2.Transport{
 			DialTLSContext: func(ctxInner context.Context, network string, addr string, cfg *gotls.Config) (net.Conn, error) {
 				return dialContext(ctxInner)
 			},
 			IdleConnTimeout: 90 * time.Second,
 		}
+		uploadTransport = downloadTransport
 	} else {
 		httpDialContext := func(ctxInner context.Context, network string, addr string) (net.Conn, error) {
 			return dialContext(ctxInner)
 		}
-		httpTransport = &http.Transport{
+
+		downloadTransport = &http.Transport{
 			DialTLSContext:  httpDialContext,
 			DialContext:     httpDialContext,
 			IdleConnTimeout: 90 * time.Second,
+			// chunked transfer download with keepalives is buggy with
+			// http.Client and our custom dial context.
+			DisableKeepAlives: true,
 		}
+
+		// we use uploadRawPool for that
+		uploadTransport = nil
 	}
 
-	client := &http.Client{
-		Transport: httpTransport,
+	client := reusedClient{
+		download: &http.Client{
+			Transport: downloadTransport,
+		},
+		upload: &http.Client{
+			Transport: uploadTransport,
+		},
+		isH2:           tlsConfig != nil,
+		uploadRawPool:  &sync.Pool{},
+		dialUploadConn: dialContext,
 	}
 
 	globalDialerMap[dialerConf{dest, streamSettings}] = client
@@ -168,7 +194,7 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
 
 	req.Header = transportConfiguration.GetRequestHeader()
 
-	downResponse, err := httpClient.Do(req)
+	downResponse, err := httpClient.download.Do(req)
 	if err != nil {
 		// workaround for various connection pool related issues, mostly around
 		// HTTP/1.1. if the http client ever fails to send a request, we simply
@@ -220,21 +246,48 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
 
 				req.Header = transportConfiguration.GetRequestHeader()
 
-				resp, err := httpClient.Do(req)
-				if err != nil {
-					newError("failed to send upload").Base(err).WriteToLog()
-					uploadPipeReader.Interrupt()
-					return
+				if httpClient.isH2 {
+					resp, err := httpClient.upload.Do(req)
+					if err != nil {
+						newError("failed to send upload").Base(err).WriteToLog()
+						uploadPipeReader.Interrupt()
+						return
+					}
+					defer resp.Body.Close()
+
+					if resp.StatusCode != 200 {
+						newError("failed to send upload, bad status code:", resp.Status).WriteToLog()
+						uploadPipeReader.Interrupt()
+						return
+					}
+				} else {
+					var err error
+					var uploadConn any
+					for _ = range 5 {
+						uploadConn = httpClient.uploadRawPool.Get()
+						if uploadConn == nil {
+							uploadConn, err = httpClient.dialUploadConn(ctx)
+							if err != nil {
+								newError("failed to connect upload").Base(err).WriteToLog()
+								uploadPipeReader.Interrupt()
+								return
+							}
+						}
+
+						err = req.Write(uploadConn.(net.Conn))
+						if err == nil {
+							break
+						}
+					}
+
+					if err != nil {
+						newError("failed to send upload").Base(err).WriteToLog()
+						uploadPipeReader.Interrupt()
+						return
+					}
+
+					httpClient.uploadRawPool.Put(uploadConn)
 				}
-
-				defer resp.Body.Close()
-
-				if resp.StatusCode != 200 {
-					newError("failed to send upload, bad status code:", resp.Status).WriteToLog()
-					uploadPipeReader.Interrupt()
-					return
-				}
-
 			}()
 
 		}
