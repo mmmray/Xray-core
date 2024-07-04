@@ -59,3 +59,5 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/XTLS/reality => github.com/Fangliding/reality v0.0.0-20240703113544-78e01bc63d27
