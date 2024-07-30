@@ -11,7 +11,6 @@ import (
 	"crypto/rand"
 	"io"
 	"math/big"
-	"runtime"
 	"strconv"
 	"time"
 
@@ -474,9 +473,9 @@ func CopyRawConnIfExist(ctx context.Context, readerConn net.Conn, writerConn net
 	readerConn, readCounter, _ := UnwrapRawConn(readerConn)
 	writerConn, _, writeCounter := UnwrapRawConn(writerConn)
 	reader := buf.NewReader(readerConn)
-	if runtime.GOOS != "linux" && runtime.GOOS != "android" {
+	// if runtime.GOOS != "linux" && runtime.GOOS != "android" {
 		return readV(ctx, reader, writer, timer, readCounter)
-	}
+	// }
 	tc, ok := writerConn.(*net.TCPConn)
 	if !ok || readerConn == nil || writerConn == nil {
 		return readV(ctx, reader, writer, timer, readCounter)

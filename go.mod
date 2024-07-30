@@ -60,3 +60,5 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/xtls/reality v0.0.0-20240712055506-48f0b2d5ed6d => github.com/mmmray/reality v0.0.0-20240730201621-c25f56de0207

@@ -15,7 +15,6 @@ import (
 	"github.com/xtls/xray-core/common/dice"
 	"github.com/xtls/xray-core/common/errors"
 	"github.com/xtls/xray-core/common/net"
-	"github.com/xtls/xray-core/common/platform"
 	"github.com/xtls/xray-core/common/retry"
 	"github.com/xtls/xray-core/common/session"
 	"github.com/xtls/xray-core/common/signal"
@@ -43,12 +42,6 @@ func init() {
 		}
 		return h, nil
 	}))
-	const defaultFlagValue = "NOT_DEFINED_AT_ALL"
-	value := platform.NewEnvFlag(platform.UseFreedomSplice).GetValue(func() string { return defaultFlagValue })
-	switch value {
-	case defaultFlagValue, "auto", "enable":
-		useSplice = true
-	}
 }
 
 // Handler handles Freedom connections.
