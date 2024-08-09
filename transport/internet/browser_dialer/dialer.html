@@ -25,8 +25,14 @@
 			ws.binaryType = "arraybuffer";
 			ws.onmessage = function (event) {
 				clientIdleCount -= 1;
-				let [method, url, headers] = event.data.split(" ");
-				headers ||= {};
+				let [method, url, rawHeaders] = event.data.split(" ");
+
+				const headers = new Headers();
+				if (rawHeaders) {
+					for (const [key, value] of Object.entries(JSON.parse(rawHeaders))) {
+						headers.append(key, value);
+					}
+				}
 				if (method == "WS") {
 					upstreamWsCount += 1;
 					console.log("Dial WS", url, headers);
