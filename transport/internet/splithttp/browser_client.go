@@ -12,10 +12,13 @@ import (
 
 // implements splithttp.DialerClient in terms of browser dialer
 // has no fields because everything is global state :O)
-type BrowserDialerClient struct{}
+type BrowserDialerClient struct {
+	transportConfig *Config
+}
 
 func (c *BrowserDialerClient) OpenDownload(ctx context.Context, baseURL string) (io.ReadCloser, gonet.Addr, gonet.Addr, error) {
-	conn, err := browser_dialer.DialGet(baseURL)
+	headers := c.transportConfig.GetRequestHeader()
+	conn, err := browser_dialer.DialGet(baseURL, headers)
 	dummyAddr := &gonet.IPAddr{}
 	if err != nil {
 		return nil, dummyAddr, dummyAddr, err
@@ -30,7 +33,8 @@ func (c *BrowserDialerClient) SendUploadRequest(ctx context.Context, url string,
 		return err
 	}
 
-	err = browser_dialer.DialPost(url, bytes)
+	headers := c.transportConfig.GetRequestHeader()
+	err = browser_dialer.DialPost(url, headers, bytes)
 	if err != nil {
 		return err
 	}

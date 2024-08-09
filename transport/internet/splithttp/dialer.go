@@ -39,7 +39,9 @@ var (
 
 func getHTTPClient(ctx context.Context, dest net.Destination, streamSettings *internet.MemoryStreamConfig) DialerClient {
 	if browser_dialer.HasBrowserDialer() {
-		return &BrowserDialerClient{}
+		return &BrowserDialerClient{
+            transportConfig: streamSettings.ProtocolSettings.(*Config),
+        }
 	}
 
 	tlsConfig := tls.ConfigFromStreamSettings(streamSettings)

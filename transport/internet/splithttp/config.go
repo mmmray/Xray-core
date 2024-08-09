@@ -30,9 +30,9 @@ func (c *Config) GetNormalizedPath(addPath string, addQuery bool) string {
 
 func (c *Config) GetRequestHeader() http.Header {
 	header := http.Header{}
-	for k, v := range c.Header {
-		header.Add(k, v)
-	}
+    for k, v := range c.Header {
+        header.Add(k, v)
+    }
 
 	paddingLen := c.GetNormalizedXPaddingHeader().roll()
 	if paddingLen > 0 {

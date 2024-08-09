@@ -25,10 +25,12 @@
 			ws.binaryType = "arraybuffer";
 			ws.onmessage = function (event) {
 				clientIdleCount -= 1;
-				let [method, url, protocol] = event.data.split(" ");
+				let [method, url, headers] = event.data.split(" ");
+				headers ||= {};
 				if (method == "WS") {
 					upstreamWsCount += 1;
-					console.log("Dial WS", url, protocol);
+					console.log("Dial WS", url, headers);
+					const protocol = headers["Sec-Websocket-Protocol"];
 					const wss = new WebSocket(url, protocol);
 					wss.binaryType = "arraybuffer";
 					var opened = false;
@@ -85,7 +87,10 @@
 
 						try {
 							upstreamGetCount += 1;
-							const response = await fetch(url, {signal: controller.signal});
+							const response = await fetch(
+								url,
+								{signal: controller.signal, headers}
+							);
 
 							const body = await response.body;
 							reader = body.getReader();
@@ -109,7 +114,7 @@
 						try {
 							const response = await fetch(
 								url,
-								{method: "POST", body: event.data}
+								{method: "POST", body: event.data, headers}
 							);
 							if (response.ok) {
 								ws.send("ok");

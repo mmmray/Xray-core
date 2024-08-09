@@ -5,6 +5,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -55,23 +56,25 @@ func HasBrowserDialer() bool {
 	return conns != nil
 }
 
+// Usage: DialWS("wss://example.com", vlessBytes)
 func DialWS(uri string, ed []byte) (*websocket.Conn, error) {
-	data := []byte("WS " + uri)
+	// The websocket browser dialer does not actually support custom headers
+	// so let's not expose the full headers map
+	headers := http.Header{}
 	if ed != nil {
-		data = append(data, " "+base64.RawURLEncoding.EncodeToString(ed)...)
+		// the casing matters here, otherwise the JavaScript dialer cannot extract it.
+		headers["Sec-Websocket-Protocol"] = []string{base64.RawURLEncoding.EncodeToString(ed)}
 	}
 
-	return dialRaw(data)
+	return dialRaw("WS", uri, headers)
 }
 
-func DialGet(uri string) (*websocket.Conn, error) {
-	data := []byte("GET " + uri)
-	return dialRaw(data)
+func DialGet(uri string, headers http.Header) (*websocket.Conn, error) {
+	return dialRaw("GET", uri, headers)
 }
 
-func DialPost(uri string, payload []byte) error {
-	data := []byte("POST " + uri)
-	conn, err := dialRaw(data)
+func DialPost(uri string, headers http.Header, payload []byte) error {
+	conn, err := dialRaw("POST", uri, headers)
 	if err != nil {
 		return err
 	}
@@ -90,7 +93,14 @@ func DialPost(uri string, payload []byte) error {
 	return nil
 }
 
-func dialRaw(data []byte) (*websocket.Conn, error) {
+func dialRaw(method string, uri string, headers http.Header) (*websocket.Conn, error) {
+	headerBytes, err := json.Marshal(headers)
+	if err != nil {
+		return nil, err
+	}
+
+	data := append([]byte(method+" "+uri+" "), headerBytes...)
+
 	var conn *websocket.Conn
 	for {
 		conn = <-conns
@@ -100,7 +110,8 @@ func dialRaw(data []byte) (*websocket.Conn, error) {
 			break
 		}
 	}
-	err := CheckOK(conn)
+
+	err = CheckOK(conn)
 	if err != nil {
 		return nil, err
 	}
