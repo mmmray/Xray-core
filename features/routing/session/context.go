@@ -2,6 +2,8 @@ package session
 
 import (
 	"context"
+    "time"
+    "fmt"
 
 	"github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/common/session"
@@ -50,8 +52,15 @@ func (ctx *Context) GetTargetIPs() []net.IP {
 		return nil
 	}
 
-	if ctx.Outbound.Target.Address.Family().IsIP() {
-		return []net.IP{ctx.Outbound.Target.Address.IP()}
+	addr := ctx.Outbound.Target.Address
+
+	if addr.Family().IsIP() {
+		time.Sleep(time.Millisecond)
+		addr2 := ctx.Outbound.Target.Address
+		if !addr.Family().IsIP() {
+			fmt.Println("XDEBUG before: ", addr, "after: ", addr2)
+		}
+		return []net.IP{addr.IP()}
 	}
 
 	return nil
@@ -125,7 +134,7 @@ func (ctx *Context) GetSkipDNSResolve() bool {
 // AsRoutingContext creates a context from context.context with session info.
 func AsRoutingContext(ctx context.Context) routing.Context {
 	outbounds := session.OutboundsFromContext(ctx)
-	ob := outbounds[len(outbounds) - 1]
+	ob := outbounds[len(outbounds)-1]
 	return &Context{
 		Inbound:  session.InboundFromContext(ctx),
 		Outbound: ob,
