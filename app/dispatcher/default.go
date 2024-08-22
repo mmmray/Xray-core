@@ -239,7 +239,9 @@ func (d *DefaultDispatcher) Dispatch(ctx context.Context, destination net.Destin
 	}
 	ob := outbounds[len(outbounds)-1]
 	ob.OriginalTarget = destination
-	ob.Target = destination
+	dest2 := destination
+	dest2.Origin = "dispatcher.default.Dispatch"
+	ob.Target = dest2
 	content := session.ContentFromContext(ctx)
 	if content == nil {
 		content = new(session.Content)
@@ -275,7 +277,9 @@ func (d *DefaultDispatcher) Dispatch(ctx context.Context, destination net.Destin
 				if sniffingRequest.RouteOnly && protocol != "fakedns" && protocol != "fakedns+others" && !isFakeIP {
 					ob.RouteTarget = destination
 				} else {
-					ob.Target = destination
+					dest2 := destination
+					dest2.Origin = "dispatcher.default.Dispatch.2"
+					ob.Target = dest2
 				}
 			}
 			d.routedDispatch(ctx, outbound, destination)
@@ -296,7 +300,9 @@ func (d *DefaultDispatcher) DispatchLink(ctx context.Context, destination net.De
 	}
 	ob := outbounds[len(outbounds)-1]
 	ob.OriginalTarget = destination
-	ob.Target = destination
+	dest2 := destination
+	dest2.Origin = "dispatcher.defualt.DispatchLink"
+	ob.Target = dest2
 	content := session.ContentFromContext(ctx)
 	if content == nil {
 		content = new(session.Content)
@@ -329,7 +335,9 @@ func (d *DefaultDispatcher) DispatchLink(ctx context.Context, destination net.De
 			if sniffingRequest.RouteOnly && protocol != "fakedns" && protocol != "fakedns+others" && !isFakeIP {
 				ob.RouteTarget = destination
 			} else {
-				ob.Target = destination
+				dest2 := destination
+				dest2.Origin = "dispatcher.defualt.DispatchLink.2"
+				ob.Target = dest2
 			}
 		}
 		d.routedDispatch(ctx, outbound, destination)
@@ -394,7 +402,9 @@ func (d *DefaultDispatcher) routedDispatch(ctx context.Context, link *transport.
 			if ro {
 				ob.RouteTarget = destination
 			} else {
-				ob.Target = destination
+				dest2 := destination
+				dest2.Origin = "routedDispatch"
+				ob.Target = dest2
 			}
 		}
 	}

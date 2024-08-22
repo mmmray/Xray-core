@@ -10,6 +10,7 @@ type Destination struct {
 	Address Address
 	Port    Port
 	Network Network
+	Origin string
 }
 
 // DestinationFromAddr generates a Destination from a net address.

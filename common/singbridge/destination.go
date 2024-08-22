@@ -24,6 +24,7 @@ func ToDestination(socksaddr M.Socksaddr, network net.Network) net.Destination {
 			Network: network,
 			Address: net.DomainAddress(socksaddr.Fqdn),
 			Port:    net.Port(socksaddr.Port),
+			Origin: "singbridge.ToDestination",
 		}
 	}
 
