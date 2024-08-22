@@ -53,6 +53,7 @@ func (ctx *Context) GetTargetIPs() []net.IP {
 	}
 
 	outbound := &*ctx.Outbound
+	target := ctx.Outbound.Target
 	addr := ctx.Outbound.Target.Address
 
 	if addr.Family().IsIP() {
@@ -60,6 +61,7 @@ func (ctx *Context) GetTargetIPs() []net.IP {
 		addr2 := ctx.Outbound.Target.Address
 		if !addr2.Family().IsIP() {
 			fmt.Println("XDEBUG address before: ", addr, "after: ", addr2)
+			fmt.Println("XDEBUG target before: ", target, "after: ", ctx.Outbound.Target)
 			fmt.Println("XDEBUG outbound before: ", outbound, "after: ", ctx.Outbound)
 		}
 		return []net.IP{addr.IP()}
