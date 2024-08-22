@@ -52,7 +52,7 @@ func (ctx *Context) GetTargetIPs() []net.IP {
 		return nil
 	}
 
-	outbound := ctx.Outbound
+	outbound := &*ctx.Outbound
 	addr := ctx.Outbound.Target.Address
 
 	if addr.Family().IsIP() {
