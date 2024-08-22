@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	_ "unsafe"
+	"fmt"
 
 	"github.com/xtls/xray-core/common/ctx"
 	"github.com/xtls/xray-core/common/net"
@@ -52,6 +53,8 @@ func ContextCloneOutbounds(ctx context.Context) context.Context {
 		v := *ob
 		newOutbounds[i] = &v
 	}
+
+	fmt.Println("cloned outbounds: ", len(newOutbounds))
 
 	return ContextWithOutbounds(ctx, newOutbounds)
 }
