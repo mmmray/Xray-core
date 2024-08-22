@@ -311,7 +311,8 @@ func (w *ServerWorker) run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		default:
-			err := w.handleFrame(ctx, reader)
+			fCtx := session.ContextCloneOutbounds(ctx)
+			err := w.handleFrame(fCtx, reader)
 			if err != nil {
 				if errors.Cause(err) != io.EOF {
 					errors.LogInfoInner(ctx, err, "unexpected EOF")
