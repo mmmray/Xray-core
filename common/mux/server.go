@@ -286,7 +286,8 @@ func (w *ServerWorker) handleFrame(ctx context.Context, reader *buf.BufferedRead
 	case SessionStatusEnd:
 		err = w.handleStatusEnd(&meta, reader)
 	case SessionStatusNew:
-		err = w.handleStatusNew(ctx, &meta, reader)
+		// clone outbounds because it is going to be mutated concurrently (Target and OriginalTarget)
+		err = w.handleStatusNew(session.ContextCloneOutbounds(ctx), &meta, reader)
 	case SessionStatusKeep:
 		err = w.handleStatusKeep(&meta, reader)
 	default:
@@ -311,8 +312,7 @@ func (w *ServerWorker) run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		default:
-			fCtx := session.ContextCloneOutbounds(ctx)
-			err := w.handleFrame(fCtx, reader)
+			err := w.handleFrame(ctx, reader)
 			if err != nil {
 				if errors.Cause(err) != io.EOF {
 					errors.LogInfoInner(ctx, err, "unexpected EOF")
