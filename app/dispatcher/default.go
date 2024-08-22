@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"fmt"
 
 	"github.com/xtls/xray-core/common"
 	"github.com/xtls/xray-core/common/errors"
@@ -240,7 +241,7 @@ func (d *DefaultDispatcher) Dispatch(ctx context.Context, destination net.Destin
 	ob := outbounds[len(outbounds)-1]
 	ob.OriginalTarget = destination
 	dest2 := destination
-	dest2.Origin = "dispatcher.default.Dispatch"
+	dest2.Origin = "dispatcher.default.Dispatch dest=" + destination.String() + " ptr-ob=" + fmt.Sprintln(ob)
 	ob.Target = dest2
 	content := session.ContentFromContext(ctx)
 	if content == nil {
