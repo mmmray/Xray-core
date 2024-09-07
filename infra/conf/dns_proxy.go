@@ -1,3 +1,6 @@
+//go:build !wasm
+// +build !wasm
+
 package conf
 
 import (
@@ -7,13 +10,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type DNSOutboundConfig struct {
-	Network    Network  `json:"network"`
-	Address    *Address `json:"address"`
-	Port       uint16   `json:"port"`
-	UserLevel  uint32   `json:"userLevel"`
-	NonIPQuery string   `json:"nonIPQuery"`
-}
 
 func (c *DNSOutboundConfig) Build() (proto.Message, error) {
 	config := &dns.Config{

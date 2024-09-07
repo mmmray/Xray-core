@@ -1,29 +1,25 @@
+//go:build !wasm
+// +build !wasm
+
 package conf
 
 import (
-	"encoding/json"
-
 	"github.com/xtls/xray-core/common/errors"
 	"github.com/xtls/xray-core/common/serial"
 	"github.com/xtls/xray-core/proxy/blackhole"
 	"google.golang.org/protobuf/proto"
 )
 
-type NoneResponse struct{}
 
 func (*NoneResponse) Build() (proto.Message, error) {
 	return new(blackhole.NoneResponse), nil
 }
 
-type HTTPResponse struct{}
 
 func (*HTTPResponse) Build() (proto.Message, error) {
 	return new(blackhole.HTTPResponse), nil
 }
 
-type BlackholeConfig struct {
-	Response json.RawMessage `json:"response"`
-}
 
 func (v *BlackholeConfig) Build() (proto.Message, error) {
 	config := new(blackhole.Config)

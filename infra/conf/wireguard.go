@@ -1,3 +1,6 @@
+//go:build !wasm
+// +build !wasm
+
 package conf
 
 import (
@@ -11,13 +14,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type WireGuardPeerConfig struct {
-	PublicKey    string   `json:"publicKey"`
-	PreSharedKey string   `json:"preSharedKey"`
-	Endpoint     string   `json:"endpoint"`
-	KeepAlive    uint32   `json:"keepAlive"`
-	AllowedIPs   []string `json:"allowedIPs,omitempty"`
-}
 
 func (c *WireGuardPeerConfig) Build() (proto.Message, error) {
 	var err error
@@ -49,18 +45,6 @@ func (c *WireGuardPeerConfig) Build() (proto.Message, error) {
 	return config, nil
 }
 
-type WireGuardConfig struct {
-	IsClient bool `json:""`
-
-	KernelMode     *bool                  `json:"kernelMode"`
-	SecretKey      string                 `json:"secretKey"`
-	Address        []string               `json:"address"`
-	Peers          []*WireGuardPeerConfig `json:"peers"`
-	MTU            int32                  `json:"mtu"`
-	NumWorkers     int32                  `json:"workers"`
-	Reserved       []byte                 `json:"reserved"`
-	DomainStrategy string                 `json:"domainStrategy"`
-}
 
 func (c *WireGuardConfig) Build() (proto.Message, error) {
 	config := new(wireguard.DeviceConfig)

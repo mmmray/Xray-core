@@ -1,3 +1,6 @@
+//go:build !wasm
+// +build !wasm
+
 package conf
 
 import (
@@ -10,23 +13,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type HTTPAccount struct {
-	Username string `json:"user"`
-	Password string `json:"pass"`
-}
-
 func (v *HTTPAccount) Build() *http.Account {
 	return &http.Account{
 		Username: v.Username,
 		Password: v.Password,
 	}
-}
-
-type HTTPServerConfig struct {
-	Timeout     uint32         `json:"timeout"`
-	Accounts    []*HTTPAccount `json:"accounts"`
-	Transparent bool           `json:"allowTransparent"`
-	UserLevel   uint32         `json:"userLevel"`
 }
 
 func (c *HTTPServerConfig) Build() (proto.Message, error) {
@@ -44,17 +35,6 @@ func (c *HTTPServerConfig) Build() (proto.Message, error) {
 	}
 
 	return config, nil
-}
-
-type HTTPRemoteConfig struct {
-	Address *Address          `json:"address"`
-	Port    uint16            `json:"port"`
-	Users   []json.RawMessage `json:"users"`
-}
-
-type HTTPClientConfig struct {
-	Servers []*HTTPRemoteConfig `json:"servers"`
-	Headers map[string]string   `json:"headers"`
 }
 
 func (v *HTTPClientConfig) Build() (proto.Message, error) {

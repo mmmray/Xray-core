@@ -10,15 +10,6 @@ import (
 	"github.com/xtls/xray-core/features/dns"
 )
 
-type FakeDNSPoolElementConfig struct {
-	IPPool  string `json:"ipPool"`
-	LRUSize int64  `json:"poolSize"`
-}
-
-type FakeDNSConfig struct {
-	pool  *FakeDNSPoolElementConfig
-	pools []*FakeDNSPoolElementConfig
-}
 
 // UnmarshalJSON implements encoding/json.Unmarshaler.UnmarshalJSON
 func (f *FakeDNSConfig) UnmarshalJSON(data []byte) error {

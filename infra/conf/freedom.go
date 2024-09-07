@@ -1,3 +1,6 @@
+//go:build !wasm
+// +build !wasm
+
 package conf
 
 import (
@@ -11,27 +14,6 @@ import (
 	"github.com/xtls/xray-core/proxy/freedom"
 	"google.golang.org/protobuf/proto"
 )
-
-type FreedomConfig struct {
-	DomainStrategy string    `json:"domainStrategy"`
-	Timeout        *uint32   `json:"timeout"`
-	Redirect       string    `json:"redirect"`
-	UserLevel      uint32    `json:"userLevel"`
-	Fragment       *Fragment `json:"fragment"`
-	Noise          *Noise    `json:"noise"`
-	ProxyProtocol  uint32    `json:"proxyProtocol"`
-}
-
-type Fragment struct {
-	Packets  string `json:"packets"`
-	Length   string `json:"length"`
-	Interval string `json:"interval"`
-}
-
-type Noise struct {
-	Packet string `json:"packet"`
-	Delay  string `json:"delay"`
-}
 
 // Build implements Buildable
 func (c *FreedomConfig) Build() (proto.Message, error) {

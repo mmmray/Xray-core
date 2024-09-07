@@ -1,3 +1,6 @@
+//go:build !wasm
+// +build !wasm
+
 package conf
 
 import (
@@ -19,21 +22,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type VLessInboundFallback struct {
-	Name string          `json:"name"`
-	Alpn string          `json:"alpn"`
-	Path string          `json:"path"`
-	Type string          `json:"type"`
-	Dest json.RawMessage `json:"dest"`
-	Xver uint64          `json:"xver"`
-}
-
-type VLessInboundConfig struct {
-	Clients    []json.RawMessage       `json:"clients"`
-	Decryption string                  `json:"decryption"`
-	Fallback   *VLessInboundFallback   `json:"fallback"`
-	Fallbacks  []*VLessInboundFallback `json:"fallbacks"`
-}
 
 // Build implements Buildable
 func (c *VLessInboundConfig) Build() (proto.Message, error) {
@@ -133,15 +121,6 @@ func (c *VLessInboundConfig) Build() (proto.Message, error) {
 	return config, nil
 }
 
-type VLessOutboundVnext struct {
-	Address *Address          `json:"address"`
-	Port    uint16            `json:"port"`
-	Users   []json.RawMessage `json:"users"`
-}
-
-type VLessOutboundConfig struct {
-	Vnext []*VLessOutboundVnext `json:"vnext"`
-}
 
 // Build implements Buildable
 func (c *VLessOutboundConfig) Build() (proto.Message, error) {

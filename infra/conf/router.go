@@ -1,3 +1,6 @@
+//go:build !wasm
+// +build !wasm
+
 package conf
 
 import (
@@ -13,24 +16,6 @@ import (
 	"github.com/xtls/xray-core/common/serial"
 	"google.golang.org/protobuf/proto"
 )
-
-type RouterRulesConfig struct {
-	RuleList       []json.RawMessage `json:"rules"`
-	DomainStrategy string            `json:"domainStrategy"`
-}
-
-// StrategyConfig represents a strategy config
-type StrategyConfig struct {
-	Type     string           `json:"type"`
-	Settings *json.RawMessage `json:"settings"`
-}
-
-type BalancingRule struct {
-	Tag         string         `json:"tag"`
-	Selectors   StringList     `json:"selector"`
-	Strategy    StrategyConfig `json:"strategy"`
-	FallbackTag string         `json:"fallbackTag"`
-}
 
 // Build builds the balancing rule
 func (r *BalancingRule) Build() (*router.BalancingRule, error) {
@@ -75,14 +60,6 @@ func (r *BalancingRule) Build() (*router.BalancingRule, error) {
 	}, nil
 }
 
-type RouterConfig struct {
-	Settings       *RouterRulesConfig `json:"settings"` // Deprecated
-	RuleList       []json.RawMessage  `json:"rules"`
-	DomainStrategy *string            `json:"domainStrategy"`
-	Balancers      []*BalancingRule   `json:"balancers"`
-
-	DomainMatcher string `json:"domainMatcher"`
-}
 
 func (c *RouterConfig) getDomainStrategy() router.Config_DomainStrategy {
 	ds := ""
@@ -139,14 +116,6 @@ func (c *RouterConfig) Build() (*router.Config, error) {
 	return config, nil
 }
 
-type RouterRule struct {
-	RuleTag     string `json:"ruleTag"`
-	Type        string `json:"type"`
-	OutboundTag string `json:"outboundTag"`
-	BalancerTag string `json:"balancerTag"`
-
-	DomainMatcher string `json:"domainMatcher"`
-}
 
 func ParseIP(s string) (*router.CIDR, error) {
 	var addr, mask string

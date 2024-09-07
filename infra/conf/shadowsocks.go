@@ -1,3 +1,6 @@
+//go:build !wasm
+// +build !wasm
+
 package conf
 
 import (
@@ -30,24 +33,7 @@ func cipherFromString(c string) shadowsocks.CipherType {
 	}
 }
 
-type ShadowsocksUserConfig struct {
-	Cipher   string   `json:"method"`
-	Password string   `json:"password"`
-	Level    byte     `json:"level"`
-	Email    string   `json:"email"`
-	Address  *Address `json:"address"`
-	Port     uint16   `json:"port"`
-}
 
-type ShadowsocksServerConfig struct {
-	Cipher      string                   `json:"method"`
-	Password    string                   `json:"password"`
-	Level       byte                     `json:"level"`
-	Email       string                   `json:"email"`
-	Users       []*ShadowsocksUserConfig `json:"clients"`
-	NetworkList *NetworkList             `json:"network"`
-	IVCheck     bool                     `json:"ivCheck"`
-}
 
 func (v *ShadowsocksServerConfig) Build() (proto.Message, error) {
 	if C.Contains(shadowaead_2022.List, v.Cipher) {
@@ -155,21 +141,6 @@ func buildShadowsocks2022(v *ShadowsocksServerConfig) (proto.Message, error) {
 	return config, nil
 }
 
-type ShadowsocksServerTarget struct {
-	Address    *Address `json:"address"`
-	Port       uint16   `json:"port"`
-	Cipher     string   `json:"method"`
-	Password   string   `json:"password"`
-	Email      string   `json:"email"`
-	Level      byte     `json:"level"`
-	IVCheck    bool     `json:"ivCheck"`
-	UoT        bool     `json:"uot"`
-	UoTVersion int      `json:"uotVersion"`
-}
-
-type ShadowsocksClientConfig struct {
-	Servers []*ShadowsocksServerTarget `json:"servers"`
-}
 
 func (v *ShadowsocksClientConfig) Build() (proto.Message, error) {
 	if len(v.Servers) == 0 {

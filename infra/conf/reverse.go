@@ -1,3 +1,6 @@
+//go:build !wasm
+// +build !wasm
+
 package conf
 
 import (
@@ -5,10 +8,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type BridgeConfig struct {
-	Tag    string `json:"tag"`
-	Domain string `json:"domain"`
-}
 
 func (c *BridgeConfig) Build() (*reverse.BridgeConfig, error) {
 	return &reverse.BridgeConfig{
@@ -17,10 +16,6 @@ func (c *BridgeConfig) Build() (*reverse.BridgeConfig, error) {
 	}, nil
 }
 
-type PortalConfig struct {
-	Tag    string `json:"tag"`
-	Domain string `json:"domain"`
-}
 
 func (c *PortalConfig) Build() (*reverse.PortalConfig, error) {
 	return &reverse.PortalConfig{
@@ -29,10 +24,6 @@ func (c *PortalConfig) Build() (*reverse.PortalConfig, error) {
 	}, nil
 }
 
-type ReverseConfig struct {
-	Bridges []BridgeConfig `json:"bridges"`
-	Portals []PortalConfig `json:"portals"`
-}
 
 func (c *ReverseConfig) Build() (proto.Message, error) {
 	config := &reverse.Config{}

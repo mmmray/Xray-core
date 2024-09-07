@@ -1,3 +1,6 @@
+//go:build !wasm
+// +build !wasm
+
 package conf
 
 import (
@@ -28,34 +31,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var (
-	kcpHeaderLoader = NewJSONConfigLoader(ConfigCreatorCache{
-		"none":         func() interface{} { return new(NoOpAuthenticator) },
-		"srtp":         func() interface{} { return new(SRTPAuthenticator) },
-		"utp":          func() interface{} { return new(UTPAuthenticator) },
-		"wechat-video": func() interface{} { return new(WechatVideoAuthenticator) },
-		"dtls":         func() interface{} { return new(DTLSAuthenticator) },
-		"wireguard":    func() interface{} { return new(WireguardAuthenticator) },
-		"dns":          func() interface{} { return new(DNSAuthenticator) },
-	}, "type", "")
-
-	tcpHeaderLoader = NewJSONConfigLoader(ConfigCreatorCache{
-		"none": func() interface{} { return new(NoOpConnectionAuthenticator) },
-		"http": func() interface{} { return new(Authenticator) },
-	}, "type", "")
-)
-
-type KCPConfig struct {
-	Mtu             *uint32         `json:"mtu"`
-	Tti             *uint32         `json:"tti"`
-	UpCap           *uint32         `json:"uplinkCapacity"`
-	DownCap         *uint32         `json:"downlinkCapacity"`
-	Congestion      *bool           `json:"congestion"`
-	ReadBufferSize  *uint32         `json:"readBufferSize"`
-	WriteBufferSize *uint32         `json:"writeBufferSize"`
-	HeaderConfig    json.RawMessage `json:"header"`
-	Seed            *string         `json:"seed"`
-}
 
 // Build implements Buildable.
 func (c *KCPConfig) Build() (proto.Message, error) {
@@ -119,10 +94,6 @@ func (c *KCPConfig) Build() (proto.Message, error) {
 	return config, nil
 }
 
-type TCPConfig struct {
-	HeaderConfig        json.RawMessage `json:"header"`
-	AcceptProxyProtocol bool            `json:"acceptProxyProtocol"`
-}
 
 // Build implements Buildable.
 func (c *TCPConfig) Build() (proto.Message, error) {
@@ -144,12 +115,6 @@ func (c *TCPConfig) Build() (proto.Message, error) {
 	return config, nil
 }
 
-type WebSocketConfig struct {
-	Host                string            `json:"host"`
-	Path                string            `json:"path"`
-	Headers             map[string]string `json:"headers"`
-	AcceptProxyProtocol bool              `json:"acceptProxyProtocol"`
-}
 
 // Build implements Buildable.
 func (c *WebSocketConfig) Build() (proto.Message, error) {
@@ -180,13 +145,6 @@ func (c *WebSocketConfig) Build() (proto.Message, error) {
 		Ed:                  ed,
 	}
 	return config, nil
-}
-
-type HttpUpgradeConfig struct {
-	Host                string            `json:"host"`
-	Path                string            `json:"path"`
-	Headers             map[string]string `json:"headers"`
-	AcceptProxyProtocol bool              `json:"acceptProxyProtocol"`
 }
 
 // Build implements Buildable.
@@ -222,16 +180,6 @@ func (c *HttpUpgradeConfig) Build() (proto.Message, error) {
 	return config, nil
 }
 
-type SplitHTTPConfig struct {
-	Host                 string            `json:"host"`
-	Path                 string            `json:"path"`
-	Headers              map[string]string `json:"headers"`
-	ScMaxConcurrentPosts *Int32Range       `json:"scMaxConcurrentPosts"`
-	ScMaxEachPostBytes   *Int32Range       `json:"scMaxEachPostBytes"`
-	ScMinPostsIntervalMs *Int32Range       `json:"scMinPostsIntervalMs"`
-	NoSSEHeader          bool              `json:"noSSEHeader"`
-	XPaddingBytes        *Int32Range       `json:"xPaddingBytes"`
-}
 
 func splithttpNewRandRangeConfig(input *Int32Range) *splithttp.RandRangeConfig {
 	if input == nil {
@@ -267,14 +215,6 @@ func (c *SplitHTTPConfig) Build() (proto.Message, error) {
 	return config, nil
 }
 
-type HTTPConfig struct {
-	Host               *StringList            `json:"host"`
-	Path               string                 `json:"path"`
-	ReadIdleTimeout    int32                  `json:"read_idle_timeout"`
-	HealthCheckTimeout int32                  `json:"health_check_timeout"`
-	Method             string                 `json:"method"`
-	Headers            map[string]*StringList `json:"headers"`
-}
 
 // Build implements Buildable.
 func (c *HTTPConfig) Build() (proto.Message, error) {
@@ -322,16 +262,6 @@ func readFileOrString(f string, s []string) ([]byte, error) {
 	return nil, errors.New("both file and bytes are empty.")
 }
 
-type TLSCertConfig struct {
-	CertFile       string   `json:"certificateFile"`
-	CertStr        []string `json:"certificate"`
-	KeyFile        string   `json:"keyFile"`
-	KeyStr         []string `json:"key"`
-	Usage          string   `json:"usage"`
-	OcspStapling   uint64   `json:"ocspStapling"`
-	OneTimeLoading bool     `json:"oneTimeLoading"`
-	BuildChain     bool     `json:"buildChain"`
-}
 
 // Build implements Buildable.
 func (c *TLSCertConfig) Build() (*tls.Certificate, error) {
@@ -374,22 +304,6 @@ func (c *TLSCertConfig) Build() (*tls.Certificate, error) {
 	return certificate, nil
 }
 
-type TLSConfig struct {
-	Insecure                             bool             `json:"allowInsecure"`
-	Certs                                []*TLSCertConfig `json:"certificates"`
-	ServerName                           string           `json:"serverName"`
-	ALPN                                 *StringList      `json:"alpn"`
-	EnableSessionResumption              bool             `json:"enableSessionResumption"`
-	DisableSystemRoot                    bool             `json:"disableSystemRoot"`
-	MinVersion                           string           `json:"minVersion"`
-	MaxVersion                           string           `json:"maxVersion"`
-	CipherSuites                         string           `json:"cipherSuites"`
-	Fingerprint                          string           `json:"fingerprint"`
-	RejectUnknownSNI                     bool             `json:"rejectUnknownSni"`
-	PinnedPeerCertificateChainSha256     *[]string        `json:"pinnedPeerCertificateChainSha256"`
-	PinnedPeerCertificatePublicKeySha256 *[]string        `json:"pinnedPeerCertificatePublicKeySha256"`
-	MasterKeyLog                         string           `json:"masterKeyLog"`
-}
 
 // Build implements Buildable.
 func (c *TLSConfig) Build() (proto.Message, error) {
@@ -448,25 +362,6 @@ func (c *TLSConfig) Build() (proto.Message, error) {
 	return config, nil
 }
 
-type REALITYConfig struct {
-	Show         bool            `json:"show"`
-	MasterKeyLog string          `json:"masterKeyLog"`
-	Dest         json.RawMessage `json:"dest"`
-	Type         string          `json:"type"`
-	Xver         uint64          `json:"xver"`
-	ServerNames  []string        `json:"serverNames"`
-	PrivateKey   string          `json:"privateKey"`
-	MinClientVer string          `json:"minClientVer"`
-	MaxClientVer string          `json:"maxClientVer"`
-	MaxTimeDiff  uint64          `json:"maxTimeDiff"`
-	ShortIds     []string        `json:"shortIds"`
-
-	Fingerprint string `json:"fingerprint"`
-	ServerName  string `json:"serverName"`
-	PublicKey   string `json:"publicKey"`
-	ShortId     string `json:"shortId"`
-	SpiderX     string `json:"spiderX"`
-}
 
 func (c *REALITYConfig) Build() (proto.Message, error) {
 	config := new(reality.Config)
@@ -617,7 +512,6 @@ func (c *REALITYConfig) Build() (proto.Message, error) {
 	return config, nil
 }
 
-type TransportProtocol string
 
 // Build implements Buildable.
 func (p TransportProtocol) Build() (string, error) {
@@ -641,32 +535,6 @@ func (p TransportProtocol) Build() (string, error) {
 	}
 }
 
-type CustomSockoptConfig struct {
-	Level string `json:"level"`
-	Opt   string `json:"opt"`
-	Value string `json:"value"`
-	Type  string `json:"type"`
-}
-
-type SocketConfig struct {
-	Mark                 int32                  `json:"mark"`
-	TFO                  interface{}            `json:"tcpFastOpen"`
-	TProxy               string                 `json:"tproxy"`
-	AcceptProxyProtocol  bool                   `json:"acceptProxyProtocol"`
-	DomainStrategy       string                 `json:"domainStrategy"`
-	DialerProxy          string                 `json:"dialerProxy"`
-	TCPKeepAliveInterval int32                  `json:"tcpKeepAliveInterval"`
-	TCPKeepAliveIdle     int32                  `json:"tcpKeepAliveIdle"`
-	TCPCongestion        string                 `json:"tcpCongestion"`
-	TCPWindowClamp       int32                  `json:"tcpWindowClamp"`
-	TCPMaxSeg            int32                  `json:"tcpMaxSeg"`
-	TcpNoDelay           bool                   `json:"tcpNoDelay"`
-	TCPUserTimeout       int32                  `json:"tcpUserTimeout"`
-	V6only               bool                   `json:"v6only"`
-	Interface            string                 `json:"interface"`
-	TcpMptcp             bool                   `json:"tcpMptcp"`
-	CustomSockopt        []*CustomSockoptConfig `json:"customSockopt"`
-}
 
 // Build implements Buildable.
 func (c *SocketConfig) Build() (*internet.SocketConfig, error) {
@@ -756,21 +624,6 @@ func (c *SocketConfig) Build() (*internet.SocketConfig, error) {
 	}, nil
 }
 
-type StreamConfig struct {
-	Network             *TransportProtocol  `json:"network"`
-	Security            string              `json:"security"`
-	TLSSettings         *TLSConfig          `json:"tlsSettings"`
-	REALITYSettings     *REALITYConfig      `json:"realitySettings"`
-	TCPSettings         *TCPConfig          `json:"tcpSettings"`
-	KCPSettings         *KCPConfig          `json:"kcpSettings"`
-	WSSettings          *WebSocketConfig    `json:"wsSettings"`
-	HTTPSettings        *HTTPConfig         `json:"httpSettings"`
-	SocketSettings      *SocketConfig       `json:"sockopt"`
-	GRPCConfig          *GRPCConfig         `json:"grpcSettings"`
-	GUNConfig           *GRPCConfig         `json:"gunSettings"`
-	HTTPUPGRADESettings *HttpUpgradeConfig  `json:"httpupgradeSettings"`
-	SplitHTTPSettings   *SplitHTTPConfig    `json:"splithttpSettings"`
-}
 
 // Build implements Buildable.
 func (c *StreamConfig) Build() (*internet.StreamConfig, error) {
@@ -900,14 +753,6 @@ func (c *StreamConfig) Build() (*internet.StreamConfig, error) {
 	return config, nil
 }
 
-type ProxyConfig struct {
-	Tag string `json:"tag"`
-
-	// TransportLayerProxy: For compatibility.
-	TransportLayerProxy bool `json:"transportLayer"`
-}
-
-// Build implements Buildable.
 func (v *ProxyConfig) Build() (*internet.ProxyConfig, error) {
 	if v.Tag == "" {
 		return nil, errors.New("Proxy tag is not set.")

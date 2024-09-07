@@ -1,3 +1,6 @@
+//go:build !wasm
+// +build !wasm
+
 package conf
 
 import (
@@ -11,15 +14,6 @@ import (
 	"github.com/xtls/xray-core/common/net"
 )
 
-type NameServerConfig struct {
-	Address       *Address
-	ClientIP      *Address
-	Port          uint16
-	SkipFallback  bool
-	Domains       []string
-	ExpectIPs     StringList
-	QueryStrategy string
-}
 
 func (c *NameServerConfig) UnmarshalJSON(data []byte) error {
 	var address Address
@@ -127,22 +121,6 @@ var typeMap = map[router.Domain_Type]dns.DomainMatchingType{
 	router.Domain_Regex:  dns.DomainMatchingType_Regex,
 }
 
-// DNSConfig is a JSON serializable object for dns.Config.
-type DNSConfig struct {
-	Servers                []*NameServerConfig `json:"servers"`
-	Hosts                  *HostsWrapper       `json:"hosts"`
-	ClientIP               *Address            `json:"clientIp"`
-	Tag                    string              `json:"tag"`
-	QueryStrategy          string              `json:"queryStrategy"`
-	DisableCache           bool                `json:"disableCache"`
-	DisableFallback        bool                `json:"disableFallback"`
-	DisableFallbackIfMatch bool                `json:"disableFallbackIfMatch"`
-}
-
-type HostAddress struct {
-	addr  *Address
-	addrs []*Address
-}
 
 // UnmarshalJSON implements encoding/json.Unmarshaler.UnmarshalJSON
 func (h *HostAddress) UnmarshalJSON(data []byte) error {
@@ -159,9 +137,6 @@ func (h *HostAddress) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type HostsWrapper struct {
-	Hosts map[string]*HostAddress
-}
 
 func getHostMapping(ha *HostAddress) *dns.Config_HostMapping {
 	if ha.addr != nil {
