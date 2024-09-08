@@ -11,6 +11,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+type SocksAccount struct {
+	Username string `json:"user"`
+	Password string `json:"pass"`
+}
+
 func (v *SocksAccount) Build() *socks.Account {
 	return &socks.Account{
 		Username: v.Username,
@@ -22,6 +27,15 @@ const (
 	AuthMethodNoAuth   = "noauth"
 	AuthMethodUserPass = "password"
 )
+
+type SocksServerConfig struct {
+	AuthMethod string          `json:"auth"`
+	Accounts   []*SocksAccount `json:"accounts"`
+	UDP        bool            `json:"udp"`
+	Host       *Address        `json:"ip"`
+	Timeout    uint32          `json:"timeout"`
+	UserLevel  uint32          `json:"userLevel"`
+}
 
 func (v *SocksServerConfig) Build() (proto.Message, error) {
 	config := new(socks.ServerConfig)
@@ -52,6 +66,16 @@ func (v *SocksServerConfig) Build() (proto.Message, error) {
 	return config, nil
 }
 
+type SocksRemoteConfig struct {
+	Address *Address          `json:"address"`
+	Port    uint16            `json:"port"`
+	Users   []json.RawMessage `json:"users"`
+}
+
+type SocksClientConfig struct {
+	Servers []*SocksRemoteConfig `json:"servers"`
+	Version string               `json:"version"`
+}
 
 func (v *SocksClientConfig) Build() (proto.Message, error) {
 	config := new(socks.ClientConfig)

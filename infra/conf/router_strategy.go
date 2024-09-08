@@ -44,6 +44,14 @@ type strategyLeastLoadConfig struct {
 	Tolerance float64 `json:"tolerance,omitempty"`
 }
 
+// healthCheckSettings holds settings for health Checker
+type healthCheckSettings struct {
+	Destination   string   `json:"destination"`
+	Connectivity  string   `json:"connectivity"`
+	Interval      duration.Duration `json:"interval"`
+	SamplingCount int      `json:"sampling"`
+	Timeout       duration.Duration `json:"timeout"`
+}
 
 func (h healthCheckSettings) Build() (proto.Message, error) {
 	return &burst.HealthPingConfig{

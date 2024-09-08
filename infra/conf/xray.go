@@ -2,6 +2,7 @@ package conf
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -19,6 +20,31 @@ import (
 )
 
 var (
+	inboundConfigLoader = NewJSONConfigLoader(ConfigCreatorCache{
+		"dokodemo-door": func() interface{} { return new(DokodemoConfig) },
+		"http":          func() interface{} { return new(HTTPServerConfig) },
+		"shadowsocks":   func() interface{} { return new(ShadowsocksServerConfig) },
+		"socks":         func() interface{} { return new(SocksServerConfig) },
+		"vless":         func() interface{} { return new(VLessInboundConfig) },
+		"vmess":         func() interface{} { return new(VMessInboundConfig) },
+		"trojan":        func() interface{} { return new(TrojanServerConfig) },
+		"wireguard":     func() interface{} { return &WireGuardConfig{IsClient: false} },
+	}, "protocol", "settings")
+
+	outboundConfigLoader = NewJSONConfigLoader(ConfigCreatorCache{
+		"blackhole":   func() interface{} { return new(BlackholeConfig) },
+		"loopback":    func() interface{} { return new(LoopbackConfig) },
+		"freedom":     func() interface{} { return new(FreedomConfig) },
+		"http":        func() interface{} { return new(HTTPClientConfig) },
+		"shadowsocks": func() interface{} { return new(ShadowsocksClientConfig) },
+		"socks":       func() interface{} { return new(SocksClientConfig) },
+		"vless":       func() interface{} { return new(VLessOutboundConfig) },
+		"vmess":       func() interface{} { return new(VMessOutboundConfig) },
+		"trojan":      func() interface{} { return new(TrojanClientConfig) },
+		"dns":         func() interface{} { return new(DNSOutboundConfig) },
+		"wireguard":   func() interface{} { return &WireGuardConfig{IsClient: true} },
+	}, "protocol", "settings")
+
 	ctllog = log.New(os.Stderr, "xctl> ", 0)
 )
 
@@ -35,6 +61,14 @@ func toProtocolList(s []string) ([]proxyman.KnownProtocols, error) {
 		}
 	}
 	return kp, nil
+}
+
+type SniffingConfig struct {
+	Enabled         bool        `json:"enabled"`
+	DestOverride    *StringList `json:"destOverride"`
+	DomainsExcluded *StringList `json:"domainsExcluded"`
+	MetadataOnly    bool        `json:"metadataOnly"`
+	RouteOnly       bool        `json:"routeOnly"`
 }
 
 // Build implements Buildable.
@@ -75,6 +109,13 @@ func (c *SniffingConfig) Build() (*proxyman.SniffingConfig, error) {
 	}, nil
 }
 
+type MuxConfig struct {
+	Enabled         bool   `json:"enabled"`
+	Concurrency     int16  `json:"concurrency"`
+	XudpConcurrency int16  `json:"xudpConcurrency"`
+	XudpProxyUDP443 string `json:"xudpProxyUDP443"`
+}
+
 // Build creates MultiplexingConfig, Concurrency < 0 completely disables mux.
 func (m *MuxConfig) Build() (*proxyman.MultiplexingConfig, error) {
 	switch m.XudpProxyUDP443 {
@@ -92,6 +133,11 @@ func (m *MuxConfig) Build() (*proxyman.MultiplexingConfig, error) {
 	}, nil
 }
 
+type InboundDetourAllocationConfig struct {
+	Strategy    string  `json:"strategy"`
+	Concurrency *uint32 `json:"concurrency"`
+	RefreshMin  *uint32 `json:"refresh"`
+}
 
 // Build implements Buildable.
 func (c *InboundDetourAllocationConfig) Build() (*proxyman.AllocationStrategy, error) {
@@ -121,6 +167,17 @@ func (c *InboundDetourAllocationConfig) Build() (*proxyman.AllocationStrategy, e
 	return config, nil
 }
 
+type InboundDetourConfig struct {
+	Protocol       string                         `json:"protocol"`
+	PortList       *PortList                      `json:"port"`
+	ListenOn       *Address                       `json:"listen"`
+	Settings       *json.RawMessage               `json:"settings"`
+	Tag            string                         `json:"tag"`
+	Allocation     *InboundDetourAllocationConfig `json:"allocate"`
+	StreamSetting  *StreamConfig                  `json:"streamSettings"`
+	DomainOverride *StringList                    `json:"domainOverride"`
+	SniffingConfig *SniffingConfig                `json:"sniffing"`
+}
 
 // Build implements Buildable.
 func (c *InboundDetourConfig) Build() (*core.InboundHandlerConfig, error) {
@@ -223,6 +280,15 @@ func (c *InboundDetourConfig) Build() (*core.InboundHandlerConfig, error) {
 	}, nil
 }
 
+type OutboundDetourConfig struct {
+	Protocol      string           `json:"protocol"`
+	SendThrough   *string          `json:"sendThrough"`
+	Tag           string           `json:"tag"`
+	Settings      *json.RawMessage `json:"settings"`
+	StreamSetting *StreamConfig    `json:"streamSettings"`
+	ProxySettings *ProxyConfig     `json:"proxySettings"`
+	MuxSettings   *MuxConfig       `json:"mux"`
+}
 
 func (c *OutboundDetourConfig) checkChainProxyConfig() error {
 	if c.StreamSetting == nil || c.ProxySettings == nil || c.StreamSetting.SocketSettings == nil {
@@ -310,12 +376,37 @@ func (c *OutboundDetourConfig) Build() (*core.OutboundHandlerConfig, error) {
 	}, nil
 }
 
+type StatsConfig struct{}
 
 // Build implements Buildable.
 func (c *StatsConfig) Build() (*stats.Config, error) {
 	return &stats.Config{}, nil
 }
 
+type Config struct {
+	// Port of this Point server.
+	// Deprecated: Port exists for historical compatibility
+	// and should not be used.
+	Port uint16 `json:"port"`
+
+	// Deprecated: Global transport config is no longer used
+	// left for returning error
+	Transport        map[string]json.RawMessage `json:"transport"`
+
+	LogConfig        *LogConfig              `json:"log"`
+	RouterConfig     *RouterConfig           `json:"routing"`
+	DNSConfig        *DNSConfig              `json:"dns"`
+	InboundConfigs   []InboundDetourConfig   `json:"inbounds"`
+	OutboundConfigs  []OutboundDetourConfig  `json:"outbounds"`
+	Policy           *PolicyConfig           `json:"policy"`
+	API              *APIConfig              `json:"api"`
+	Metrics          *MetricsConfig          `json:"metrics"`
+	Stats            *StatsConfig            `json:"stats"`
+	Reverse          *ReverseConfig          `json:"reverse"`
+	FakeDNS          *FakeDNSConfig          `json:"fakeDns"`
+	Observatory      *ObservatoryConfig      `json:"observatory"`
+	BurstObservatory *BurstObservatoryConfig `json:"burstObservatory"`
+}
 
 func (c *Config) findInboundTag(tag string) int {
 	found := -1

@@ -5,6 +5,14 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+type DokodemoConfig struct {
+	Host         *Address     `json:"address"`
+	PortValue    uint16       `json:"port"`
+	NetworkList  *NetworkList `json:"network"`
+	TimeoutValue uint32       `json:"timeout"`
+	Redirect     bool         `json:"followRedirect"`
+	UserLevel    uint32       `json:"userLevel"`
+}
 
 func (v *DokodemoConfig) Build() (proto.Message, error) {
 	config := new(dokodemo.Config)

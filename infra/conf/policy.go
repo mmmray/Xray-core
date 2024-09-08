@@ -4,6 +4,15 @@ import (
 	"github.com/xtls/xray-core/app/policy"
 )
 
+type Policy struct {
+	Handshake         *uint32 `json:"handshake"`
+	ConnectionIdle    *uint32 `json:"connIdle"`
+	UplinkOnly        *uint32 `json:"uplinkOnly"`
+	DownlinkOnly      *uint32 `json:"downlinkOnly"`
+	StatsUserUplink   bool    `json:"statsUserUplink"`
+	StatsUserDownlink bool    `json:"statsUserDownlink"`
+	BufferSize        *int32  `json:"bufferSize"`
+}
 
 func (t *Policy) Build() (*policy.Policy, error) {
 	config := new(policy.Policy_Timeout)

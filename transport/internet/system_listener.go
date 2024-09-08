@@ -13,6 +13,7 @@ import (
 	"github.com/sagernet/sing/common/control"
 	"github.com/xtls/xray-core/common/errors"
 	"github.com/xtls/xray-core/common/net"
+	"github.com/xtls/xray-core/common"
 )
 
 var effectiveListener = DefaultListener{}
@@ -85,7 +86,7 @@ func (dl *DefaultListener) Listen(ctx context.Context, addr net.Addr, sockopt *S
 			if len(address) > 1 && address[1] == '@' {
 				// 108 = len(syscall.RawSockaddrUnix{}.Path)
 				// but may need padding to work with haproxy
-				fullAddr := make([]byte, 108)
+				fullAddr := make([]byte, common.RawSockAddrUnixLen)
 				copy(fullAddr, address[1:])
 				address = string(fullAddr)
 			}

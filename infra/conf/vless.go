@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/xtls/xray-core/common"
 	"github.com/xtls/xray-core/common/errors"
 	"github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/common/protocol"
@@ -18,6 +19,21 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+type VLessInboundFallback struct {
+	Name string          `json:"name"`
+	Alpn string          `json:"alpn"`
+	Path string          `json:"path"`
+	Type string          `json:"type"`
+	Dest json.RawMessage `json:"dest"`
+	Xver uint64          `json:"xver"`
+}
+
+type VLessInboundConfig struct {
+	Clients    []json.RawMessage       `json:"clients"`
+	Decryption string                  `json:"decryption"`
+	Fallback   *VLessInboundFallback   `json:"fallback"`
+	Fallbacks  []*VLessInboundFallback `json:"fallbacks"`
+}
 
 // Build implements Buildable
 func (c *VLessInboundConfig) Build() (proto.Message, error) {
@@ -93,7 +109,7 @@ func (c *VLessInboundConfig) Build() (proto.Message, error) {
 			} else if filepath.IsAbs(fb.Dest) || fb.Dest[0] == '@' {
 				fb.Type = "unix"
 				if strings.HasPrefix(fb.Dest, "@@") && (runtime.GOOS == "linux" || runtime.GOOS == "android") {
-					fullAddr := make([]byte, RawSockAddrUnixLen) // may need padding to work with haproxy
+					fullAddr := make([]byte, common.RawSockAddrUnixLen) // may need padding to work with haproxy
 					copy(fullAddr, fb.Dest[1:])
 					fb.Dest = string(fullAddr)
 				}
@@ -117,6 +133,15 @@ func (c *VLessInboundConfig) Build() (proto.Message, error) {
 	return config, nil
 }
 
+type VLessOutboundVnext struct {
+	Address *Address          `json:"address"`
+	Port    uint16            `json:"port"`
+	Users   []json.RawMessage `json:"users"`
+}
+
+type VLessOutboundConfig struct {
+	Vnext []*VLessOutboundVnext `json:"vnext"`
+}
 
 // Build implements Buildable
 func (c *VLessOutboundConfig) Build() (proto.Message, error) {

@@ -5,6 +5,9 @@ import (
 	"github.com/xtls/xray-core/common/errors"
 )
 
+type MetricsConfig struct {
+	Tag string `json:"tag"`
+}
 
 func (c *MetricsConfig) Build() (*metrics.Config, error) {
 	if c.Tag == "" {

@@ -14,6 +14,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+type VMessAccount struct {
+	ID          string `json:"id"`
+	Security    string `json:"security"`
+	Experiments string `json:"experiments"`
+}
 
 // Build implements Buildable
 func (a *VMessAccount) Build() *vmess.Account {
@@ -41,6 +46,10 @@ func (a *VMessAccount) Build() *vmess.Account {
 	}
 }
 
+type VMessDetourConfig struct {
+	ToTag string `json:"to"`
+}
+
 // Build implements Buildable
 func (c *VMessDetourConfig) Build() *inbound.DetourConfig {
 	return &inbound.DetourConfig{
@@ -48,7 +57,13 @@ func (c *VMessDetourConfig) Build() *inbound.DetourConfig {
 	}
 }
 
+type FeaturesConfig struct {
+	Detour *VMessDetourConfig `json:"detour"`
+}
 
+type VMessDefaultConfig struct {
+	Level byte `json:"level"`
+}
 
 // Build implements Buildable
 func (c *VMessDefaultConfig) Build() *inbound.DefaultConfig {
@@ -57,6 +72,12 @@ func (c *VMessDefaultConfig) Build() *inbound.DefaultConfig {
 	return config
 }
 
+type VMessInboundConfig struct {
+	Users        []json.RawMessage   `json:"clients"`
+	Features     *FeaturesConfig     `json:"features"`
+	Defaults     *VMessDefaultConfig `json:"default"`
+	DetourConfig *VMessDetourConfig  `json:"detour"`
+}
 
 // Build implements Buildable
 func (c *VMessInboundConfig) Build() (proto.Message, error) {
@@ -96,6 +117,15 @@ func (c *VMessInboundConfig) Build() (proto.Message, error) {
 	return config, nil
 }
 
+type VMessOutboundTarget struct {
+	Address *Address          `json:"address"`
+	Port    uint16            `json:"port"`
+	Users   []json.RawMessage `json:"users"`
+}
+
+type VMessOutboundConfig struct {
+	Receivers []*VMessOutboundTarget `json:"vnext"`
+}
 
 // Build implements Buildable
 func (c *VMessOutboundConfig) Build() (proto.Message, error) {

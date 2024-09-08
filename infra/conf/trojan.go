@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/xtls/xray-core/common"
 	"github.com/xtls/xray-core/common/errors"
 	"github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/common/protocol"
@@ -15,6 +16,20 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// TrojanServerTarget is configuration of a single trojan server
+type TrojanServerTarget struct {
+	Address  *Address `json:"address"`
+	Port     uint16   `json:"port"`
+	Password string   `json:"password"`
+	Email    string   `json:"email"`
+	Level    byte     `json:"level"`
+	Flow     string   `json:"flow"`
+}
+
+// TrojanClientConfig is configuration of trojan servers
+type TrojanClientConfig struct {
+	Servers []*TrojanServerTarget `json:"servers"`
+}
 
 // Build implements Buildable
 func (c *TrojanClientConfig) Build() (proto.Message, error) {
@@ -58,6 +73,30 @@ func (c *TrojanClientConfig) Build() (proto.Message, error) {
 	return config, nil
 }
 
+// TrojanInboundFallback is fallback configuration
+type TrojanInboundFallback struct {
+	Name string          `json:"name"`
+	Alpn string          `json:"alpn"`
+	Path string          `json:"path"`
+	Type string          `json:"type"`
+	Dest json.RawMessage `json:"dest"`
+	Xver uint64          `json:"xver"`
+}
+
+// TrojanUserConfig is user configuration
+type TrojanUserConfig struct {
+	Password string `json:"password"`
+	Level    byte   `json:"level"`
+	Email    string `json:"email"`
+	Flow     string `json:"flow"`
+}
+
+// TrojanServerConfig is Inbound configuration
+type TrojanServerConfig struct {
+	Clients   []*TrojanUserConfig      `json:"clients"`
+	Fallback  *TrojanInboundFallback   `json:"fallback"`
+	Fallbacks []*TrojanInboundFallback `json:"fallbacks"`
+}
 
 // Build implements Buildable
 func (c *TrojanServerConfig) Build() (proto.Message, error) {
@@ -114,7 +153,7 @@ func (c *TrojanServerConfig) Build() (proto.Message, error) {
 			} else if filepath.IsAbs(fb.Dest) || fb.Dest[0] == '@' {
 				fb.Type = "unix"
 				if strings.HasPrefix(fb.Dest, "@@") && (runtime.GOOS == "linux" || runtime.GOOS == "android") {
-					fullAddr := make([]byte, RawSockAddrUnixLen) // may need padding to work with haproxy
+					fullAddr := make([]byte, common.RawSockAddrUnixLen) // may need padding to work with haproxy
 					copy(fullAddr, fb.Dest[1:])
 					fb.Dest = string(fullAddr)
 				}

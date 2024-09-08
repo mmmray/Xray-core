@@ -5,6 +5,16 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+type GRPCConfig struct {
+	Authority           string `json:"authority"`
+	ServiceName         string `json:"serviceName"`
+	MultiMode           bool   `json:"multiMode"`
+	IdleTimeout         int32  `json:"idle_timeout"`
+	HealthCheckTimeout  int32  `json:"health_check_timeout"`
+	PermitWithoutStream bool   `json:"permit_without_stream"`
+	InitialWindowsSize  int32  `json:"initial_windows_size"`
+	UserAgent           string `json:"user_agent"`
+}
 
 func (g *GRPCConfig) Build() (proto.Message, error) {
 	if g.IdleTimeout <= 0 {

@@ -153,3 +153,6 @@ func GetModuleName(pathToProjectRoot string) (string, error) {
 	}
 	return moduleName, fmt.Errorf("no `go.mod` file in every parent directory of `%s`", pathToProjectRoot)
 }
+
+// len(syscall.RawSockaddrUnix{}.Path)
+const RawSockAddrUnixLen = 108
