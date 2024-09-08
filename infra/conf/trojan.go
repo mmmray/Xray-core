@@ -1,6 +1,3 @@
-//go:build !wasm
-// +build !wasm
-
 package conf
 
 import (
@@ -9,7 +6,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 
 	"github.com/xtls/xray-core/common/errors"
 	"github.com/xtls/xray-core/common/net"
@@ -118,7 +114,7 @@ func (c *TrojanServerConfig) Build() (proto.Message, error) {
 			} else if filepath.IsAbs(fb.Dest) || fb.Dest[0] == '@' {
 				fb.Type = "unix"
 				if strings.HasPrefix(fb.Dest, "@@") && (runtime.GOOS == "linux" || runtime.GOOS == "android") {
-					fullAddr := make([]byte, len(syscall.RawSockaddrUnix{}.Path)) // may need padding to work with haproxy
+					fullAddr := make([]byte, RawSockAddrUnixLen) // may need padding to work with haproxy
 					copy(fullAddr, fb.Dest[1:])
 					fb.Dest = string(fullAddr)
 				}

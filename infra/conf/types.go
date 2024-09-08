@@ -727,3 +727,6 @@ type healthCheckSettings struct {
 	SamplingCount int      `json:"sampling"`
 	Timeout       duration.Duration `json:"timeout"`
 }
+
+// len(syscall.RawSockaddrUnix{}.Path)
+const RawSockAddrUnixLen = 108
