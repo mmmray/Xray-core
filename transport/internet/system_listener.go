@@ -83,8 +83,9 @@ func (dl *DefaultListener) Listen(ctx context.Context, addr net.Addr, sockopt *S
 		if (runtime.GOOS == "linux" || runtime.GOOS == "android") && address[0] == '@' {
 			// linux abstract unix domain socket is lockfree
 			if len(address) > 1 && address[1] == '@' {
+				// 108 = len(syscall.RawSockaddrUnix{}.Path)
 				// but may need padding to work with haproxy
-				fullAddr := make([]byte, len(syscall.RawSockaddrUnix{}.Path))
+				fullAddr := make([]byte, 108)
 				copy(fullAddr, address[1:])
 				address = string(fullAddr)
 			}

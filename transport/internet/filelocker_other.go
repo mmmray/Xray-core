@@ -1,5 +1,5 @@
-//go:build !windows
-// +build !windows
+//go:build !wasm && !windows
+// +build !wasm !windows
 
 package internet
 

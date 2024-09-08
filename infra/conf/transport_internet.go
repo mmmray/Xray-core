@@ -1,6 +1,3 @@
-//go:build !wasm
-// +build !wasm
-
 package conf
 
 import (
@@ -12,7 +9,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 
 	"github.com/xtls/xray-core/common/errors"
 	"github.com/xtls/xray-core/common/net"
@@ -381,7 +377,8 @@ func (c *REALITYConfig) Build() (proto.Message, error) {
 			case '@', '/':
 				c.Type = "unix"
 				if s[0] == '@' && len(s) > 1 && s[1] == '@' && (runtime.GOOS == "linux" || runtime.GOOS == "android") {
-					fullAddr := make([]byte, len(syscall.RawSockaddrUnix{}.Path)) // may need padding to work with haproxy
+					// 108 == len(syscall.RawSockaddrUnix{}.Path)
+					fullAddr := make([]byte, 108) // may need padding to work with haproxy
 					copy(fullAddr, s[1:])
 					s = string(fullAddr)
 				}
