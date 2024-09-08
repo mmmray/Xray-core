@@ -1,3 +1,6 @@
+//go:build !wasm
+// +build !wasm
+
 package shadowsocks_2022
 
 import (

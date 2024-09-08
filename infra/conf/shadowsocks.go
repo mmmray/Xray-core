@@ -1,12 +1,8 @@
-//go:build !wasm
-// +build !wasm
-
 package conf
 
 import (
 	"strings"
 
-	"github.com/sagernet/sing-shadowsocks/shadowaead_2022"
 	C "github.com/sagernet/sing/common"
 	"github.com/xtls/xray-core/common/errors"
 	"github.com/xtls/xray-core/common/protocol"
@@ -15,6 +11,12 @@ import (
 	"github.com/xtls/xray-core/proxy/shadowsocks_2022"
 	"google.golang.org/protobuf/proto"
 )
+
+var aeadList = []string{
+	"2022-blake3-aes-128-gcm",
+	"2022-blake3-aes-256-gcm",
+	"2022-blake3-chacha20-poly1305",
+}
 
 func cipherFromString(c string) shadowsocks.CipherType {
 	switch strings.ToLower(c) {
@@ -36,7 +38,7 @@ func cipherFromString(c string) shadowsocks.CipherType {
 
 
 func (v *ShadowsocksServerConfig) Build() (proto.Message, error) {
-	if C.Contains(shadowaead_2022.List, v.Cipher) {
+	if C.Contains(aeadList, v.Cipher) {
 		return buildShadowsocks2022(v)
 	}
 
@@ -149,7 +151,7 @@ func (v *ShadowsocksClientConfig) Build() (proto.Message, error) {
 
 	if len(v.Servers) == 1 {
 		server := v.Servers[0]
-		if C.Contains(shadowaead_2022.List, server.Cipher) {
+		if C.Contains(aeadList, server.Cipher) {
 			if server.Address == nil {
 				return nil, errors.New("Shadowsocks server address is not set.")
 			}
@@ -174,7 +176,7 @@ func (v *ShadowsocksClientConfig) Build() (proto.Message, error) {
 	config := new(shadowsocks.ClientConfig)
 	serverSpecs := make([]*protocol.ServerEndpoint, len(v.Servers))
 	for idx, server := range v.Servers {
-		if C.Contains(shadowaead_2022.List, server.Cipher) {
+		if C.Contains(aeadList, server.Cipher) {
 			return nil, errors.New("Shadowsocks 2022 accept no multi servers")
 		}
 		if server.Address == nil {
