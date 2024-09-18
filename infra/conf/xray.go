@@ -48,21 +48,6 @@ var (
 	ctllog = log.New(os.Stderr, "xctl> ", 0)
 )
 
-func toProtocolList(s []string) ([]proxyman.KnownProtocols, error) {
-	kp := make([]proxyman.KnownProtocols, 0, 8)
-	for _, p := range s {
-		switch strings.ToLower(p) {
-		case "http":
-			kp = append(kp, proxyman.KnownProtocols_HTTP)
-		case "https", "tls", "ssl":
-			kp = append(kp, proxyman.KnownProtocols_TLS)
-		default:
-			return nil, errors.New("Unknown protocol: ", p)
-		}
-	}
-	return kp, nil
-}
-
 type SniffingConfig struct {
 	Enabled         bool        `json:"enabled"`
 	DestOverride    *StringList `json:"destOverride"`
@@ -175,7 +160,6 @@ type InboundDetourConfig struct {
 	Tag            string                         `json:"tag"`
 	Allocation     *InboundDetourAllocationConfig `json:"allocate"`
 	StreamSetting  *StreamConfig                  `json:"streamSettings"`
-	DomainOverride *StringList                    `json:"domainOverride"`
 	SniffingConfig *SniffingConfig                `json:"sniffing"`
 }
 
@@ -248,13 +232,6 @@ func (c *InboundDetourConfig) Build() (*core.InboundHandlerConfig, error) {
 			return nil, errors.New("failed to build sniffing config").Base(err)
 		}
 		receiverSettings.SniffingSettings = s
-	}
-	if c.DomainOverride != nil {
-		kp, err := toProtocolList(*c.DomainOverride)
-		if err != nil {
-			return nil, errors.New("failed to parse inbound detour config").Base(err)
-		}
-		receiverSettings.DomainOverride = kp
 	}
 
 	settings := []byte("{}")
@@ -384,11 +361,6 @@ func (c *StatsConfig) Build() (*stats.Config, error) {
 }
 
 type Config struct {
-	// Port of this Point server.
-	// Deprecated: Port exists for historical compatibility
-	// and should not be used.
-	Port uint16 `json:"port"`
-
 	// Deprecated: Global transport config is no longer used
 	// left for returning error
 	Transport        map[string]json.RawMessage `json:"transport"`
@@ -620,16 +592,8 @@ func (c *Config) Build() (*core.Config, error) {
 		inbounds = append(inbounds, c.InboundConfigs...)
 	}
 
-	// Backward compatibility.
-	if len(inbounds) > 0 && inbounds[0].PortList == nil && c.Port > 0 {
-		inbounds[0].PortList = &PortList{[]PortRange{{
-			From: uint32(c.Port),
-			To:   uint32(c.Port),
-		}}}
-	}
-
 	if len(c.Transport) > 0 {
-		return nil, errors.New("Global transport config is deprecated")
+		return nil, errors.PrintRemovedFeatureError("Global transport config", "streamSettings in inbounds and outbounds")
 	}
 
 	for _, rawInboundConfig := range inbounds {
